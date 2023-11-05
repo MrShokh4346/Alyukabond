@@ -5,6 +5,7 @@ from flask_migrate import Migrate
 from sqlalchemy import MetaData
 from dotenv.main import load_dotenv
 import os
+from flask_jwt_extended import JWTManager
 from datetime import timedelta
 
 
@@ -23,7 +24,6 @@ db = SQLAlchemy(metadata=MetaData(naming_convention=naming_convention))
 migrate = Migrate()
 ma = Marshmallow()
 jwt = JWTManager()
-mail = Mail()
 
 
 def create_app():
@@ -61,7 +61,7 @@ def create_app():
     #         db.session.commit()
 
 
-    from silk_road import models
+    from main import models
     with app.app_context():
         db.create_all()
 
