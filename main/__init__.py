@@ -31,6 +31,7 @@ def create_app():
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///test.db"
     app.config["JWT_SECRET_KEY"] = os.environ['JWT_SECRET_KEY']
     app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
     app.config["SECRET_KEY"] = os.environ['SECRET_KEY']
@@ -41,24 +42,26 @@ def create_app():
     migrate.init_app(app, db)
     jwt.init_app(app)
 
-    # from silk_road.auth import bp as auth_bp
-    # app.register_blueprint(auth_bp, url_prefix="/auth/v1")
+    from main.auth import bp as auth_bp
+    app.register_blueprint(auth_bp, url_prefix="/auth/v1")
 
-    # from silk_road.api import bp as api_bp
-    # app.register_blueprint(api_bp, url_prefix="/api/v1")
+    from main.salafan import bp as api_bp
+    app.register_blueprint(api_bp, url_prefix="/salafan/v1")
 
-    # from silk_road.payment import bp as payment_bp
-    # app.register_blueprint(payment_bp, url_prefix="/payment/v1")
+    from main.alyukabond import bp as al_bp
+    app.register_blueprint(al_bp, url_prefix="/alyukabond/v1")
 
-    # from silk_road.models import Category
-    # @app.cli.command('add-category')
-    # def add_category():
-    #     name = input("name: ")
-    #     icon = input("icon: ")
-    #     category = Category(name=name, icon=icon)
-    #     with app.app_context():
-    #         db.session.add(category)
-    #         db.session.commit()
+    from main.models import Users
+    @app.cli.command('adduser')
+    def add_category():
+        first_name = input("name: ")
+        username = input("username: ")
+        password = input("password: ")
+        role = input("role (a/se/e): ")
+        user = Users(first_name=first_name, username=username, role=role, password=password)
+        with app.app_context():
+            db.session.add(user)
+            db.session.commit()
 
 
     from main import models
