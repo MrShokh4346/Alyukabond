@@ -181,8 +181,16 @@ def make_granula():
             granula_weight = data.get("granula_weight")
         )
         db.session.add(granula)
+        amount = GranulaAmount.query.filter_by(sklad=False).first()
+        if not amount:
+            amount = GranulaAmount(weight=0)
+            db.session.add(amount)
+        amount.weight += data.get("granula_weight")
         db.session.commit()
         return jsonify(msg="Success")
     else:
-        granulas = GranulaSklad.query.all()
-        return jsonify(gr_sklad_schema.dump(granulas))
+        data = {
+            'granulas':gr_sklad_schema.dump(GranulaSklad.query.all()),
+            'amount':glue_amount_schemas.dump(GranulaAmount.query.filter_by(sklad=False).first())
+        }
+        return jsonify(data)

@@ -44,6 +44,7 @@ class AluminySerializer(Schema):
     thickness = fields.Float(required=True)
     list_width = fields.Float(required=True)
     list_length = fields.Float(required=True)
+    quantity = fields.Integer(required=True)
     roll_weight = fields.Float(required=True)
     price_per_kg = fields.Float(required=True)
     total_price_d = fields.Float(required=True)
@@ -61,9 +62,10 @@ aluminy_schemas = AluminySerializer(many=True)
 class AluminyAmountSerializer(Schema):
     id = fields.Integer(dump_only=True)
     color = fields.String(required=True)
+    type_aluminy = fields.String(required=True)
     thickness = fields.Float(required=True)
     width = fields.Float(required=True)
-    length = fields.Float(required=True)
+    surface = fields.Float(required=True)
     weight = fields.Float(required=True)
 
 al_amount_schema = AluminyAmountSerializer(many=True)
@@ -76,6 +78,7 @@ class GlueSerializer(Schema):
     surface = fields.Float(required=True)
     weight = fields.Float(required=True)
     price_per_kg = fields.Float(required=True)
+    quantity = fields.Integer(required=True)
     total_price_d = fields.Float(required=True)
     total_price_s = fields.Float(required=True)
     payed_price_d = fields.Float(required=True)
@@ -95,7 +98,9 @@ class GlueAmountSerializer(Schema):
     surface = fields.Float(required=True)
     weight = fields.Float(required=True)
 
+glue_amount_schema = GlueAmountSerializer()
 glue_amount_schemas = GlueAmountSerializer(many=True)
+
 
 
 class StickerSerializer(Schema):
@@ -107,6 +112,7 @@ class StickerSerializer(Schema):
     price_per_surface = fields.Float(required=True)
     total_price_d = fields.Float(required=True)
     total_price_s = fields.Float(required=True)
+    quantity = fields.Integer(required=True)
     payed_price_d = fields.Float(required=True)
     payed_price_s = fields.Float(required=True)
     debt_d = fields.Float(required=True)
@@ -145,20 +151,7 @@ class GranulaSkladSerializer(Schema):
 gr_sklad_schema = GranulaSkladSerializer(many=True)
 
 
-class SaledProductSerializer(Schema):
-    id = fields.Integer(dump_only=True)
-    provider = fields.String(required=True)
-    customer = fields.String(required=True)
-    agreement_num = fields.Integer()
-    total_price_d = fields.Float(required=True)
-    total_price_s = fields.Float(required=True)
-    payed_price_d = fields.Float(required=True)
-    payed_price_s = fields.Float(required=True)
-    debt_d = fields.Float(required=True)
-    debt_s = fields.Float(required=True)
-    date = fields.DateTime(required=True)
 
-saled_product_schema = SaledProductSerializer(many=True)
 
 
 class AlyukabondAmountSerializer(Schema):
@@ -175,3 +168,26 @@ class AlyukabondAmountSerializer(Schema):
     quantity = fields.Integer(required=True)
 
 alyukabond_amount_schema = AlyukabondAmountSerializer(many=True)
+
+
+class SelectedProductSerializer(Schema):
+    id = fields.Integer(dump_only=True)
+    quantity = fields.Integer(required=True)
+    product = fields.Nested(AlyukabondAmountSerializer, dump_only=True, required=True)
+    
+
+class SaledProductSerializer(Schema):
+    id = fields.Integer(dump_only=True)
+    provider = fields.String(required=True)
+    customer = fields.String(required=True)
+    agreement_num = fields.Integer()
+    total_price_d = fields.Float(required=True)
+    total_price_s = fields.Float(required=True)
+    payed_price_d = fields.Float(required=True)
+    payed_price_s = fields.Float(required=True)
+    debt_d = fields.Float(required=True)
+    debt_s = fields.Float(required=True)
+    date = fields.DateTime(required=True)
+    products = fields.Nested(SelectedProductSerializer, dump_only=True, required=True, many=True)
+
+saled_product_schema = SaledProductSerializer(many=True)

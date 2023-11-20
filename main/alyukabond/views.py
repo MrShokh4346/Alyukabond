@@ -10,6 +10,7 @@ from sqlalchemy.sql import func
 from werkzeug.utils import secure_filename
 from flask import  send_from_directory, url_for, jsonify, request
 from uuid import uuid1
+from sqlalchemy.exc import SQLAlchemyError
 import os
 
 
@@ -35,7 +36,8 @@ def alyuminy_material():
             else:
                 obj = AluminyAmount.query.filter_by(thickness=request.get_json().get('thickness'), 
                                                 width=request.get_json().get('list_width'),
-                                                color=request.get_json().get('color')
+                                                color=request.get_json().get('color'),
+                                                type_aluminy=request.get_json().get('type')
                                                 ).first()
                 if obj:
                     return jsonify(msg='This size already exists')
@@ -43,19 +45,22 @@ def alyuminy_material():
                     amount = AluminyAmount(color = request.get_json().get('color'),
                                             thickness = request.get_json().get('thickness'),
                                             width = request.get_json().get('list_width'),
+                                            type_aluminy=request.get_json().get('type'),
                                             length = 0,
                                             weight = 0
                                             )
                     db.session.add(amount)
                     db.session.commit()
-            amount.length += request.get_json().get('list_length')
-            amount.weight += request.get_json().get('roll_weight')
+            amount.surface += request.get_json().get('list_length') * request.get_json().get('quantity') * request.get_json().get('list_width')
+            amount.weight += request.get_json().get('roll_weight') * request.get_json().get('quantity')
             db.session.commit()
             material = Aluminy(
+                surface = amount.surface,
                 color = request.get_json().get('color'),
                 thickness = request.get_json().get('thickness'),
                 list_width = request.get_json().get('list_width'),
                 list_length = request.get_json().get('list_length'),
+                quantity = request.get_json().get('quantity'),
                 roll_weight = request.get_json().get('roll_weight'),
                 price_per_kg = request.get_json().get('price_per_kg'),
                 total_price_d = request.get_json().get('total_price_d'),
@@ -78,6 +83,8 @@ def alyuminy_material():
             material.thickness = request.get_json().get('thickness', material.thickness)
             material.list_width = request.get_json().get('list_width', material.list_width)
             material.list_length = request.get_json().get('list_length', material.list_length)
+            material.surface = material.list_width * material.list_length
+            material.quantity = request.get_json().get('quantity', material.quantity),
             material.roll_weight = request.get_json().get('roll_weight', material.roll_weight)
             material.price_per_kg = request.get_json().get('price_per_kg', material.price_per_kg)
             material.total_price_d = request.get_json().get('total_price_d', material.total_price_d)
@@ -111,35 +118,30 @@ def glue_material():
         materials = Glue.query.all()
         amounts = GlueAmount.query.all()
         data['providers'] = glue_schemas.dump(materials)
-        data['amount'] = glue_amount_schemas.dump(amounts)
+        data['amount'] = glue_amount_schema.dump(amounts)
         return jsonify(data)
     elif request.method == 'POST':
         if user.role == 'a':
-            amount_id = request.args.get('amount_id', 0)
-            amount = GlueAmount.query.get(amount_id)
-            if amount:
-                pass
-            else:
-                obj = GlueAmount.query.filter_by(thickness=request.get_json().get('thickness'), 
-                                                type_glue=request.get_json().get('type_glue')).first()
-                if obj:
-                    return jsonify(msg='This size already exists')
-                else:
-                    amount = GlueAmount(
-                                        thickness = request.get_json().get('thickness'),
-                                        type_glue = request.get_json().get('type_glue'),
-                                        surface = 0,
-                                        weight = 0
-                                        )
-                    db.session.add(amount)
-                    db.session.commit()
-            amount.surface += request.get_json().get('surface')
-            amount.weight += request.get_json().get('weight')
+            amount = GlueAmount.query.filter_by(index1=True).first()
+            if not amount:
+                amount = GlueAmount(
+                                    surface = 0,
+                                    weight = 0
+                                    )
+                db.session.add(amount)
+                db.session.commit()
+            width = request.get_json().get('width')
+            length = request.get_json().get('length')
+            quantity = request.get_json().get('quantity')
+            amount.surface += width * length * quantity
+            amount.weight += request.get_json().get('weight') * quantity
             db.session.commit()
             material = Glue(
-                type_glue = request.get_json().get('type_glue'),
                 thickness = request.get_json().get('thickness'),
-                surface = request.get_json().get('surface'),
+                width = request.get_json().get('width'),
+                length = request.get_json().get('length'),
+                quantity = request.get_json().get('quantity'),
+                surface = width * length * quantity,
                 weight = request.get_json().get('weight'),
                 price_per_kg = request.get_json().get('price_per_kg'),
                 total_price_d = request.get_json().get('total_price_d'),
@@ -159,7 +161,10 @@ def glue_material():
             material = Glue.query.get(id)
             material.type_glue = request.get_json().get('type_glue', material.type_glue)
             material.thickness = request.get_json().get('thickness', material.thickness)
-            material.surface = request.get_json().get('surface', material.surface)
+            material.width = request.get_json().get('width', material.width)
+            material.length = request.get_json().get('length', material.length)
+            material.quantity = request.get_json().get('quantity', material.quantity)
+            material.surface =  material.width * material.length * material.quantity
             material.weight = request.get_json().get('weight', material.weight)
             material.price_per_kg = request.get_json().get('price_per_kg', material.price_per_kg)
             material.total_price_d = request.get_json().get('total_price_d', material.total_price_d)
@@ -201,7 +206,7 @@ def sticker_material():
             if amount:
                 pass
             else:
-                obj = StickerAmount.query.filter_by(width=request.get_json().get('width'), 
+                obj = StickerAmount.query.filter_by(
                                                 type_sticker=request.get_json().get('type_sticker')).first()
                 if obj:
                     return jsonify(msg='This size already exists')
@@ -209,19 +214,22 @@ def sticker_material():
                     amount = StickerAmount(
                                         width = request.get_json().get('width'),
                                         type_sticker = request.get_json().get('type_sticker'),
-                                        surface = 0,
-                                        weight = 0
+                                        surface = 0
                                         )
                     db.session.add(amount)
                     db.session.commit()
-            amount.surface += request.get_json().get('surface')
-            amount.weight += request.get_json().get('weight')
+            width = request.get_json().get('width')
+            length = request.get_json().get('lendth')
+            quantity = request.get_json().get('quantity')
+            amount.surface += width * length * quantity
             db.session.commit()
             material = Sticker(
                 type_sticker = request.get_json().get('type_sticker'),
                 width = request.get_json().get('width'),
+                length = request.get_json().get('lendth'),
+                quantity = request.get_json().get('quantity'),
                 weight = request.get_json().get('weight'),
-                surface = request.get_json().get('surface'),
+                surface = width * length * quantity,
                 price_per_surface = request.get_json().get('price_per_surface'),
                 total_price_d = request.get_json().get('total_price_d'),
                 total_price_s = request.get_json().get('total_price_s'),
@@ -240,8 +248,10 @@ def sticker_material():
             material = Sticker.query.get(id)
             material.type_sticker = request.get_json().get('type_sticker', material.type_sticker)
             material.width = request.get_json().get('width', material.width)
+            material.length = request.get_json().get('lendth', material.length)
+            material.quantity = request.get_json().get('quantity', material.quantity)
             material.weight = request.get_json().get('weight', material.weight)
-            material.surface = request.get_json().get('surface', material.surface)
+            material.surface = material.length * material.width * material.quantity
             material.price_per_surface = request.get_json().get('price_per_surface', material.price_per_surface)
             material.total_price_d = request.get_json().get('total_price_d', material.total_price_d)
             material.total_price_s = request.get_json().get('total_price_s', material.total_price_s)
@@ -262,54 +272,62 @@ def sticker_material():
         return jsonify("You are not admin"), 401
 
 
+def check(turi=None, rangi=None, qalinligi=None, yuza=None, ogirlik=None, sort=1, miqdor=1):
+    for obj in ['alyuminy', 'sticker', 'glue', 'granula']:
+        st_type = 450 if turi == "450" else 100
+        amount = {
+            'alyuminy': AluminyAmount.query.filter_by(color=rangi, type_aluminy=turi, thickness=qalinligi).first(),
+            'sticker': StickerAmount.query.filter_by(type_sticker=st_type).first(),
+            'glue': GlueAmount.query.filter_by(index1=True).first(),
+            'granula':GranulaAmount.query.filter_by(sklad=False).first()
+        }.get(obj, False)
+        
+        if amount is not None and (amount.surface > yuza * sort if obj=="alyuminy" else yuza):
+            if amount.surface if obj!="granula" else False:
+                amount.surface -= yuza * sort * miqdor if obj=="alyuminy" else yuza * miqdor
+            if amount.weight if obj!="sticker" else False:
+                amount.weight -= ogirlik[obj] * miqdor
+            msg="success"
+            db.session.commit()
+        else:
+            msg=f"There isn't enaugh {obj} in warehouse"
+            break
+    return msg
+
+
+# alc_kg, alc_kg_s = 1.4, 5.922   # alyuminiy rangli kg
+# al_kv = 3                       # alyuminiy kv 
+# g_gr, g_gr_s = 0.27, 1.2906     # kley gr
+# g_kv = 3                        # kley kv
+# s_kv, s_kv_s = 3, 0.69          # nakleyka
+# grn_kg, grn_s = 10.3, 8.24      # granula
+# al_kg, al_kg_s = 1.4, 5.24    # alyuminiy kg
+
 # prixod
 @bp.route('/make-alyukabond', methods=['GET', "POST", 'PATCH', 'PUT', 'DELETE'])
 def make_aluykabond():
     data = request.get_json()
-    alc_kg, alc_kg_s = 1.4, 5.922   # alyuminiy rangli kg
-    al_kv = 3                       # alyuminiy kv 
-    g_gr, g_gr_s = 0.27, 1.2906     # kley gr
-    g_kv = 3                        # kley kv
-    s_kv, s_kv_s = 3, 0.69          # nakleyka
-    grn_kg, grn_s = 10.3, 8.24      # granula
-    alc_kg, alc_kg_s = 1.4, 5.24    # alyuminiy kg
-    
-    try:
-        al_amount = AluminyAmount.query.filter_by(color=data.get('color'), 
-                thickness=data.get('aluminy_thickness'), width=data.get('list_width')).first()
-        if al_amount.length < (al_kv/data.get('list_width')) * data.get('quantity') and al_amount.weight < alc_kg * data.get('quantity'):
-            return jsonify(msg="There isn't enough aluminy in warehouse")
-        al_amount.length -= (al_kv/data.get('list_width')) * data.get('quantity')
-        al_amount.weight -= alc_kg * data.get('quantity')
-
-        g_amount = GlueAmount.query.filter_by(index1=True).first()
-        if g_amount.surface < g_kv * data.get('quantity') and g_amount.weight < g_gr * data.get('quantity'):
-            return jsonify(msg="There isn't enough glue in warehouse")
-        g_amount.surface -= g_kv * data.get('quantity')
-        g_amount.weight -= g_gr * data.get('quantity')
-
-        s_amount = StickerAmount.query.filter_by(type_sticker=data.get('type_product')).first()
-        if s_amount.surface < s_kv * data.get('quantity'):
-            return jsonify(msg="There isn't enough sticker in warehouse")
-        s_amount.surface -= s_kv * data.get('quantity')
-
-        grn_amount = GranulaAmount.query.filter_by(sklad=False).first()
-        if s_amount.surface < s_kv * data.get('quantity'):
-            return jsonify(msg="There isn't enough granula in warehouse")
-        grn_amount.amount -= grn_kg * data.get('quantity')
-
-        db.session.commit()
-    except:
-        return jsonify(msg='Something went wrong')
-    else:
+    turi = request.get_json().get('type')
+    rangi = request.get_json().get('color')
+    qalinligi = request.get_json().get('aluminy_thickness')
+    yuza = request.get_json().get('length') * request.get_json().get('width', 1.22)
+    ogirlik = {
+            "alyuminy":1.4,
+            "glue":0.27,
+            "granula":10.3
+        }
+    sort = request.get_json().get('sort')
+    miqdor = request.get_json().get('quantity')
+    msg = check(turi, rangi, qalinligi, yuza, ogirlik, sort, miqdor)
+    if msg == 'success':
         alyukabond = Alyukabond(
             name = data.get('name'),
             size = data.get('size'),
-            type_product = data.get('type_product'),
+            type_product = data.get('type'),
             sort = data.get('sort'),
             color = data.get('color'),
-            list_length = data.get('list_length'),
-            list_width = data.get('list_width'),
+            list_length = data.get('length'),
+            list_width = data.get('width'),
             al_thickness = data.get('aluminy_thickness'),
             product_thickness = data.get('product_thickness'),
             quantity = data.get('quantity'),
@@ -321,23 +339,22 @@ def make_aluykabond():
         if amount:
             pass
         else:
-            obj = AluminyAmount.query.filter_by(size = data.get('size'),
-                                                type_product = data.get('type_product'),
+            obj = AlyukabondAmount.query.filter_by(
+                                                type_product = data.get('type'),
                                                 sort = data.get('sort'),
                                                 color = data.get('color'),
-                                                list_length = data.get('list_length'),
-                                                list_width = data.get('list_width'),
+                                                list_length = data.get('length'),
                                                 al_thickness = data.get('aluminy_thickness'),
                                                 product_thickness = data.get('product_thickness')).first()
             if obj:
                 return jsonify(msg='This size already exists')
             else:
-                amount = AluminyAmount(size = data.get('size'),
-                                        type_product = data.get('type_product'),
+                amount = AlyukabondAmount(size = data.get('size'),
+                                        type_product = data.get('type'),
                                         sort = data.get('sort'),
                                         color = data.get('color'),
-                                        list_length = data.get('list_length'),
-                                        list_width = data.get('list_width'),
+                                        list_length = data.get('length'),
+                                        list_width = data.get('width'),
                                         al_thickness = data.get('aluminy_thickness'),
                                         product_thickness = data.get('product_thickness'),
                                         quantity=0)
@@ -346,6 +363,8 @@ def make_aluykabond():
         amount.quantity += data.get('quantity')
         db.session.commit()
         return jsonify(msg='Success')
+    else:
+        return jsonify(msg=msg)
 
 
 # sklad
@@ -364,35 +383,40 @@ def warehouse():
     return jsonify(data)
 
 
-
-
-
-
-
-
-
-
-
 @bp.route('/create-sale', methods=['GET', 'POST'])
 def create_sale():
     if request.method == 'POST':
         data = request.get_json()
         saled = SaledProduct(
-        provider = data.get('provider'),
-        customer = data.get('customer'),
-        agreement_num = data.get('agreement_num'),
-        total_price_d = data.get('total_price_d'),
-        total_price_s = data.get('total_price_s'),
-        payed_price_d = data.get('payed_price_d'),
-        payed_price_s = data.get('payed_price_s'),
-        debt_d = data.get('debt_d'),
-        debt_s = data.get('debt_s'),
-        )
+            provider = data.get('provider'),
+            customer = data.get('customer'),
+            agreement_num = data.get('agreement_num'),
+            total_price_d = data.get('total_price_d'),
+            total_price_s = data.get('total_price_s'),
+            payed_price_d = data.get('payed_price_d'),
+            payed_price_s = data.get('payed_price_s'),
+            debt_d = data.get('debt_d'),
+            debt_s = data.get('debt_s')
+            )
         db.session.add(saled)
         db.session.commit()
+        for product in data.get('products'):   # [{'id':1, 'quantity':1},...]
+            prd = db.get_or_404(AlyukabondAmount, product['id'])
+            if prd.quantity < product['quantity']:
+                db.session.delete(saled)
+                db.session.commit()
+                return jsonify(msg="There isn't enough product in warehouse")
+            selected = SelectedProduct(saled_id=saled.id, product_id=prd.id, quantity=product['quantity'])
+            db.session.add(selected)
+            db.session.commit()
         return jsonify(msg="Created")
     elif request.method == 'GET':
         sales = SaledProduct.query.all()
         return jsonify(saled_product_schema.dump(sales))
-    
 
+
+# xisobot
+@bp.route('/report')
+@jwt_required()
+def report():
+    aluminy_material = Aluminy.query.all()

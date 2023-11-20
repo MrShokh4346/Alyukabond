@@ -53,8 +53,8 @@ class MaterialAmount(db.Model):
 
 class GranulaAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    sklad = db.Column(db.Boolean)
-    amount = db.Column(db.Float)
+    sklad = db.Column(db.Boolean, default=False)
+    weight = db.Column(db.Float)
 
 
 class GranulaSklad(db.Model):
@@ -71,16 +71,19 @@ class Setka(db.Model):
     date = db.Column(db.DateTime, default=datetime.now())
 
 
-class Aluminy(db.Model):
+class Aluminy(db.Model): # soni  
     id = db.Column(db.Integer, primary_key=True)
-    color = db.Column(db.String)
+    type_aluminy = db.Column(db.String)
+    color = db.Column(db.String, default=None)
     thickness = db.Column(db.Float)
     list_width = db.Column(db.Float)
     list_length = db.Column(db.Float)
     roll_weight = db.Column(db.Float)
     price_per_kg = db.Column(db.Float)
     total_price_d = db.Column(db.Float)  
+    quantity = db.Column(db.Integer)
     total_price_s = db.Column(db.Float)  
+    surface = db.Column(db.Float)  
     payed_price_d = db.Column(db.Float)
     payed_price_s = db.Column(db.Float)
     debt_d = db.Column(db.Float)
@@ -89,20 +92,24 @@ class Aluminy(db.Model):
     date = db.Column(db.DateTime, default=datetime.now())
     log = db.relationship('LogMaterial', backref=backref('aluminy'))
 
-
+# last added
 class AluminyAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    color = db.Column(db.String)
+    type_aluminy = db.Column(db.String)
+    color = db.Column(db.String, default=None)
     thickness = db.Column(db.Float)
-    width = db.Column(db.Float)
-    length = db.Column(db.Float)
+    width = db.Column(db.Float, default=1.22)  # m
+    surface = db.Column(db.Float)
     weight = db.Column(db.Float)
 
 
 class Glue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     thickness = db.Column(db.Float)
-    weight = db.Column(db.Float)
+    weight = db.Column(db.Float)   # gramm
+    width = db.Column(db.Float)
+    quantity = db.Column(db.Integer)
+    length = db.Column(db.Float)
     surface = db.Column(db.Float)
     price_per_kg = db.Column(db.Float)
     total_price_d = db.Column(db.Float)  
@@ -120,15 +127,17 @@ class GlueAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     surface = db.Column(db.Float)
     thickness = db.Column(db.Float)
-    weight = db.Column(db.Float)
+    weight = db.Column(db.Float)  # gramm
     width = db.Column(db.Float)
-    index1 = db.Column(db.Boolean)
+    index1 = db.Column(db.Boolean, default=True)
 
 
 class Sticker(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type_sticker = db.Column(db.Integer)
     width = db.Column(db.Float)
+    quantity = db.Column(db.Integer)
+    length = db.Column(db.Float)
     weight = db.Column(db.Float)
     surface = db.Column(db.Float)
     price_per_surface = db.Column(db.Float)
@@ -145,8 +154,9 @@ class Sticker(db.Model):
 
 class StickerAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    type_sticker = db.Column(db.String)
+    type_sticker = db.Column(db.Integer)
     width = db.Column(db.Float)
+    weight = db.Column(db.Float)
     surface = db.Column(db.Float)
     thickness = db.Column(db.Float)
 
@@ -156,7 +166,7 @@ class Alyukabond(db.Model):
     name = db.Column(db.String)
     size = db.Column(db.String)
     type_product = db.Column(db.String)
-    sort = db.Column(db.String)
+    sort = db.Column(db.Integer)
     color = db.Column(db.String)
     list_length = db.Column(db.Float)
     list_width = db.Column(db.Float)
@@ -179,12 +189,14 @@ class AlyukabondAmount(db.Model):
     al_thickness = db.Column(db.Float)
     product_thickness = db.Column(db.Float)
     quantity = db.Column(db.Integer)
+    product_id = db.relationship('SelectedProduct', backref=db.backref('product', lazy=True))
+    
 
-
-seleceted_products = db.Table('seleceted_products',
-    db.Column('alyukabondamount_id', db.Integer, db.ForeignKey('alyukabond_amount.id'), primary_key=True),
-    db.Column('saledproduct_id', db.Integer, db.ForeignKey('saled_product.id'), primary_key=True)
-)
+class SelectedProduct(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    saled_id = db.Column(db.Integer, db.ForeignKey("saled_product.id")) 
+    quantity = db.Column(db.Integer)
+    product_id = db.Column(db.Integer, db.ForeignKey("alyukabond_amount.id")) 
 
 
 class SaledProduct(db.Model):
@@ -199,7 +211,7 @@ class SaledProduct(db.Model):
     debt_d = db.Column(db.Float)
     debt_s = db.Column(db.Float)
     date = db.Column(db.DateTime, default=datetime.now())
-    products = db.relationship('AlyukabondAmount', secondary=seleceted_products, lazy='subquery', backref=db.backref('saledproduct', lazy=True))
+    products = db.relationship('SelectedProduct',  backref=db.backref('saledproduct', lazy=True))
 
 
 
