@@ -71,17 +71,17 @@ class Setka(db.Model):
     date = db.Column(db.DateTime, default=datetime.now())
 
 
-class Aluminy(db.Model): # soni  
+class Aluminy(db.Model): 
     id = db.Column(db.Integer, primary_key=True)
-    type_aluminy = db.Column(db.String)
+    type_aluminy = db.Column(db.Integer, nullable=False)
     color = db.Column(db.String, default=None)
-    thickness = db.Column(db.Float)
-    list_width = db.Column(db.Float)
+    thickness = db.Column(db.Float, nullable=False)
+    list_width = db.Column(db.Float, default=1.22)
     list_length = db.Column(db.Float)
     roll_weight = db.Column(db.Float)
     price_per_kg = db.Column(db.Float)
     total_price_d = db.Column(db.Float)  
-    quantity = db.Column(db.Integer)
+    quantity = db.Column(db.Integer, nullable=False)
     total_price_s = db.Column(db.Float)  
     surface = db.Column(db.Float)  
     payed_price_d = db.Column(db.Float)
@@ -95,9 +95,9 @@ class Aluminy(db.Model): # soni
 # last added
 class AluminyAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    type_aluminy = db.Column(db.String)
+    type_aluminy = db.Column(db.Integer, nullable=False)
     color = db.Column(db.String, default=None)
-    thickness = db.Column(db.Float)
+    thickness = db.Column(db.Float, nullable=False)
     width = db.Column(db.Float, default=1.22)  # m
     surface = db.Column(db.Float)
     weight = db.Column(db.Float)
@@ -107,7 +107,7 @@ class Glue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     thickness = db.Column(db.Float)
     weight = db.Column(db.Float)   # gramm
-    width = db.Column(db.Float)
+    width = db.Column(db.Float, default=1.22)
     quantity = db.Column(db.Integer)
     length = db.Column(db.Float)
     surface = db.Column(db.Float)
@@ -138,7 +138,7 @@ class Sticker(db.Model):
     width = db.Column(db.Float)
     quantity = db.Column(db.Integer)
     length = db.Column(db.Float)
-    weight = db.Column(db.Float)
+    weight = db.Column(db.Float, default=1.22)
     surface = db.Column(db.Float)
     price_per_surface = db.Column(db.Float)
     total_price_d = db.Column(db.Float)  
@@ -231,3 +231,10 @@ class Expence(db.Model):
     description = db.Column(db.String)
     price = db.Column(db.Float)
     date = db.Column(db.DateTime, default=datetime.now())
+
+
+class Balance(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    amount = db.Column(db.Float)
+    index1 = db.Column(db.Boolean, default=True)
+

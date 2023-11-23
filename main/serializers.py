@@ -93,7 +93,6 @@ glue_schemas = GlueSerializer(many=True)
 
 class GlueAmountSerializer(Schema):
     id = fields.Integer(dump_only=True)
-    type_glue = fields.String(required=True)
     thickness = fields.Float(required=True)
     surface = fields.Float(required=True)
     weight = fields.Float(required=True)
@@ -105,9 +104,11 @@ glue_amount_schemas = GlueAmountSerializer(many=True)
 
 class StickerSerializer(Schema):
     id = fields.Integer(dump_only=True)
-    type_sticker = fields.String(required=True)
+    type_sticker = fields.Integer(required=True)
     width = fields.Float(required=True)
     weight = fields.Float(required=True)
+    length = fields.Float(required=True)
+    surface = fields.Float(required=True)
     total_surface = fields.Float(required=True)
     price_per_surface = fields.Float(required=True)
     total_price_d = fields.Float(required=True)
@@ -125,7 +126,7 @@ sticker_schemas = StickerSerializer(many=True)
 
 class StickerAmountSerializer(Schema):
     id = fields.Integer(dump_only=True)
-    type_sticker = fields.String(required=True)
+    type_sticker = fields.Integer(required=True)
     width = fields.Float(required=True)
     surface = fields.Float(required=True)
     weight = fields.Float(required=True)
@@ -151,7 +152,12 @@ class GranulaSkladSerializer(Schema):
 gr_sklad_schema = GranulaSkladSerializer(many=True)
 
 
+class GranulaSAmountSerializer(Schema):
+    id = fields.Integer(dump_only=True)
+    weight = fields.String(required=True)
+    data = fields.String(required=True)
 
+gr_amount_schema = GranulaSAmountSerializer()
 
 
 class AlyukabondAmountSerializer(Schema):
@@ -168,6 +174,23 @@ class AlyukabondAmountSerializer(Schema):
     quantity = fields.Integer(required=True)
 
 alyukabond_amount_schema = AlyukabondAmountSerializer(many=True)
+
+
+class AlyukabondSerializer(Schema):
+    id = fields.Integer(dump_only=True)
+    name = fields.String(required=True)
+    size = fields.String(required=True)
+    type_product = fields.String(required=True)
+    sort = fields.String(required=True)
+    color = fields.String(required=True)
+    list_length = fields.Float(required=True)
+    list_width = fields.Float(required=True)
+    al_thickness = fields.Float(required=True)
+    product_thickness = fields.Float(required=True)
+    provider = fields.Float(required=True)
+    date = fields.DateTime(required=True)
+
+alyukabond_schema = AlyukabondSerializer(many=True)
 
 
 class SelectedProductSerializer(Schema):

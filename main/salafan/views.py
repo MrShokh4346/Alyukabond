@@ -41,6 +41,9 @@ def material():
             db.session.add(material)
             db.session.commit()
             material_amount = MaterialAmount.query.filter_by(index1=True).first()
+            if not material_amount:
+                material_amount = MaterialAmount(amount=0, index1=True)
+                db.session.add(material_amount)
             material_amount.amount += material.weight
             db.session.commit()
             return jsonify(msg="Success"), 201
@@ -124,7 +127,7 @@ def report():
         granula_amount = GranulaAmount.query.filter_by(sklad=True).first() 
         data = {
             "poterya":GranulaSklad.query.with_entities(func.sum(GranulaSklad.material_weight - GranulaSklad.granula_weight)).all()[0][0],
-            "sklad":granula_amount.amount,
+            "sklad":granula_amount.amount if granula_amount else "There isn't granula in the warehouse",
             ###"обород"
         }
         return jsonify(data)
@@ -135,41 +138,45 @@ def report():
 @bp.route('/expence', methods=['POST', 'GET'])
 def expence():
     if request.method == 'POST':
-        exp = Expence(
-            description = request.get_json().get('description'),
-            user = request.get_json().get('user'),
-            price = request.get_json().get('price')
-        )
-        db.session.add(exp)
-        db.session.commit()
+        balance = Balance.query.filter_by(index1=True).first()
+        if balance and balance.amount > request.get_json().get('price'):
+            exp = Expence(
+                description = request.get_json().get('description'),
+                user = request.get_json().get('user'),
+                price = request.get_json().get('price')
+            )
+            db.session.add(exp)
+            balance.amount -= request.get_json().get('price')
+            db.session.commit()
         return jsonify(msg='Created')
     else:
         exp = Expence.query.all()
         return jsonify(expence_schema.dump(exp))
 
 
-# asosoiy sexga utkazish
-@bp.route('/move-to-main', methods=['POST'])
-def move_to_main():
-    amount = float(request.get_json().get('amount'))
-    granula_sklad = GranulaAmount.query.filter_by(sklad=True).first()
-    granula_main = GranulaAmount.query.filter_by(sklad=False).first()
-    if amount and (amount < granula_sklad.amount):
-        granula_sklad.amount -= amount
-        granula_main.amount += amount
-        db.session.commit()
-        return jsonify(msg="Success")
-    return jsonify(msg="There are no such amount product")
+# # asosoiy sexga utkazish
+# @bp.route('/move-to-main', methods=['POST'])
+# def move_to_main():
+#     amount = float(request.get_json().get('amount'))
+#     granula_sklad = GranulaAmount.query.filter_by(sklad=True).first()
+#     granula_main = GranulaAmount.query.filter_by(sklad=False).first()
+#     if amount and (amount < granula_sklad.amount):
+#         granula_sklad.amount -= amount
+#         granula_main.amount += amount
+#         db.session.commit()
+#         return jsonify(msg="Success")
+#     return jsonify(msg="There are no such amount product")
 
 
 # sklad
 @bp.route('/warehouse')
 def warehouse():
     data = {}
-    data['material_amount'] = MaterialAmount.query.filter_by(index1=True).first().amount
-    data['granula_amount'] = GranulaAmount.query.filter_by(sklad=True).first().amount
+    m_a = MaterialAmount.query.filter_by(index1=True).first()
+    g_a = GranulaAmount.query.filter_by(sklad=False).first()
+    data['material_amount'] = m_a.amount if m_a else "There isn't material in the warehouse"
+    data['granula_amount'] = g_a.weight if g_a else "There isn't granula in the warehouse"
     return jsonify(data)
-
 
 # granula sklad
 @bp.route('/make-granula', methods=['GET', "POST"])
@@ -191,6 +198,6 @@ def make_granula():
     else:
         data = {
             'granulas':gr_sklad_schema.dump(GranulaSklad.query.all()),
-            'amount':glue_amount_schemas.dump(GranulaAmount.query.filter_by(sklad=False).first())
+            'amount':gr_amount_schema.dump(GranulaAmount.query.filter_by(sklad=False).first())
         }
         return jsonify(data)
