@@ -12,6 +12,13 @@ from flask import  send_from_directory, url_for, jsonify, request
 from uuid import uuid1
 from sqlalchemy.exc import SQLAlchemyError
 import os
+from openpyxl import Workbook, load_workbook
+import shutil
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib import colors
+
 
 
 @bp.route('/exchange-rate', methods=['GET', 'POST'])
@@ -647,3 +654,76 @@ def balance():
     }
     return jsonify(data)
 
+
+@bp.route('/report-excel/<int:id>')
+def report_excel(id):
+    source_excel_file = 'main/alyukabond/report.xlsx'
+    destination_excel_file = 'report/report1.xlsx'
+    pdf_file = 'report/report1.pdf'
+    shutil.copy2(source_excel_file, destination_excel_file)
+
+
+    # Specify the sheet name
+    sheet_name = 'Накладная'
+
+    # Load the source workbook
+    destination_wb = load_workbook(destination_excel_file)
+    destination_sheet = destination_wb[sheet_name]
+  
+    count = 15
+    saled = SaledProduct.query.get(id)
+   
+
+    destination_sheet["C3"] = saled.date
+    destination_sheet["D5"] = saled.agreement_num
+    destination_sheet["E9"] = saled.customer.split(' ', 1)[0]
+    destination_sheet["M9"] = saled.customer.split(' ', 1)[1]
+    destination_sheet["E12"] = saled.driver
+    destination_sheet["M12"] = saled.vehicle_number
+
+    for product in saled.products:
+        typ = {
+            "100":"gl",
+            "150":"mt",
+            "450":"pdr"
+        }.get(product.product.type_product, None)
+        count +=1
+        data_to_write = {
+            f'C{count}': product.product.name if product.product.name else "Alyukabond",
+            f'L{count}': f"{product.product.color}, {typ}",
+            f'M{count}': f"{product.product.list_width}, {product.product.list_length}, {product.product.product_thickness}",
+            f'N{count}': product.product.quantity
+        }
+        for cell_address, value in data_to_write.items():
+            destination_sheet[cell_address] = value
+        destination_wb.save(destination_excel_file)
+    destination_wb.close()
+
+
+    workbook = load_workbook(destination_excel_file)
+    sheet = workbook.active
+
+    # Extract data from Excel sheet
+    data = []
+    for row in sheet.iter_rows(values_only=True):
+        data.append(row)
+
+    # Create a PDF file with A4 page size
+    pdf_file_path = pdf_file
+    pdf = SimpleDocTemplate(pdf_file_path, pagesize=A4)
+
+    # Create a table from the Excel data
+    table = Table(data)
+
+    # Add style to the table
+    style = TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black)])
+
+    table.setStyle(style)
+
+    # Build the PDF with the table
+    pdf.build([table])
+
+    return jsonify(data_to_write)

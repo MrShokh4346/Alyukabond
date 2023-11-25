@@ -23,9 +23,11 @@ class GranulaMaterialSerializer(Schema):
     payed_price = fields.Float(required=True)
     debt = fields.Float(required=True)
     provider = fields.String(required=True)
-    date = fields.DateTime(required=True)
+    date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 material_schemas = GranulaMaterialSerializer(many=True)
+material_schema = GranulaMaterialSerializer()
+
 
 
 class SetkaSerializer(Schema):
@@ -54,7 +56,7 @@ class AluminySerializer(Schema):
     debt_d = fields.Float(required=True)
     debt_s = fields.Float(required=True)
     provider = fields.String(required=True)
-    date = fields.DateTime(required=True)
+    date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 aluminy_schemas = AluminySerializer(many=True)
 
@@ -86,7 +88,7 @@ class GlueSerializer(Schema):
     debt_d = fields.Float(required=True)
     debt_s = fields.Float(required=True)
     provider = fields.String(required=True)
-    date = fields.DateTime(required=True)
+    date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 glue_schemas = GlueSerializer(many=True)
 
@@ -107,7 +109,7 @@ class StickerSerializer(Schema):
     type_sticker = fields.Integer(required=True)
     width = fields.Float(required=True)
     weight = fields.Float(required=True)
-    length = fields.Float(required=True)
+    length = fields.Float(required=True)    
     surface = fields.Float(required=True)
     total_surface = fields.Float(required=True)
     price_per_surface = fields.Float(required=True)
@@ -119,7 +121,7 @@ class StickerSerializer(Schema):
     debt_d = fields.Float(required=True)
     debt_s = fields.Float(required=True)
     provider = fields.String(required=True)
-    date = fields.DateTime(required=True)
+    date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 sticker_schemas = StickerSerializer(many=True)
 
@@ -188,7 +190,7 @@ class AlyukabondSerializer(Schema):
     al_thickness = fields.Float(required=True)
     product_thickness = fields.Float(required=True)
     provider = fields.Float(required=True)
-    date = fields.DateTime(required=True)
+    date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 alyukabond_schema = AlyukabondSerializer(many=True)
 
@@ -210,7 +212,7 @@ class SaledProductSerializer(Schema):
     payed_price_s = fields.Float(required=True)
     debt_d = fields.Float(required=True)
     debt_s = fields.Float(required=True)
-    date = fields.DateTime(required=True)
+    date = fields.DateTime(required=True, format='%Y-%m-%d')
     products = fields.Nested(SelectedProductSerializer, dump_only=True, required=True, many=True)
 
 saled_product_schema = SaledProductSerializer(many=True)

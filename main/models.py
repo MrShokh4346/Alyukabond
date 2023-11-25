@@ -189,7 +189,7 @@ class AlyukabondAmount(db.Model):
     al_thickness = db.Column(db.Float)
     product_thickness = db.Column(db.Float)
     quantity = db.Column(db.Integer)
-    product_id = db.relationship('SelectedProduct', backref=db.backref('product', lazy=True))
+    product_id = db.relationship('SelectedProduct', backref='product')
     
 
 class SelectedProduct(db.Model):
@@ -201,8 +201,9 @@ class SelectedProduct(db.Model):
 
 class SaledProduct(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    provider = db.Column(db.String)
+    driver = db.Column(db.String)
     customer = db.Column(db.String)
+    vehicle_number = db.Column(db.String)
     agreement_num = db.Column(db.Integer)
     total_price_d = db.Column(db.Float)  
     total_price_s = db.Column(db.Float)  

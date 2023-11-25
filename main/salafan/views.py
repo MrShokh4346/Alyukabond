@@ -20,6 +20,9 @@ def material():
     id = request.args.get('material_id')
     user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'GET':
+        if id is not None:
+            material =  db.get_or_404(GranulaMaterial, id)
+            return jsonify(material_schema.dump(material))
         g_materials = GranulaMaterial.query.all()
         return jsonify(material_schemas.dump(g_materials))
     elif request.method == 'POST':
@@ -29,13 +32,12 @@ def material():
                 type_material = request.get_json().get('type_material'),
                 total_weight = request.get_json().get('total_weight'),
                 waste = request.get_json().get('waste'),
-                weight = request.get_json().get('weight'),
+                weight = round(float(request.get_json().get('total_weight')) * (1 - float(request.get_json().get('waste')) / 100), 2),
                 price_per_kg = request.get_json().get('price_per_kg'),
                 total_price = request.get_json().get('total_price'),
                 payed_price = request.get_json().get('payed_price'),
-                debt = request.get_json().get('debt'),
+                debt = round(float(request.get_json().get('total_price')) - float(request.get_json().get('payed_price')), 2),
                 provider = request.get_json().get('provider'),
-                date = request.get_json().get('date'),
                 status = request.get_json().get('status')
             )
             db.session.add(material)
@@ -44,6 +46,7 @@ def material():
             if not material_amount:
                 material_amount = MaterialAmount(amount=0, index1=True)
                 db.session.add(material_amount)
+                db.session.commit()
             material_amount.amount += material.weight
             db.session.commit()
             return jsonify(msg="Success"), 201
@@ -51,18 +54,16 @@ def material():
     elif request.method == 'PUT' or request.method == 'PATCH':
         if user.role == 'a':
             material = GranulaMaterial.query.get(id)
-            material.name = request.get_json().get('name')
-            material.type_material = request.get_json().get('type_material')
-            material.total_weight = request.get_json().get('total_weight')
-            material.waste = request.get_json().get('waste')
-            material.weight = request.get_json().get('weight')
-            material.price_per_kg = request.get_json().get('price_per_kg')
-            material.total_price = request.get_json().get('total_price')
-            material.payed_price = request.get_json().get('payed_price')
-            material.debt = request.get_json().get('debt')
-            material.provider = request.get_json().get('provider')
-            material.date = request.get_json().get('date')
-            material.status = request.get_json().get('status')
+            material.name = request.get_json().get('name', material.name)
+            material.type_material = request.get_json().get('type_material', material.type_material)
+            material.total_weight = request.get_json().get('total_weight', material.total_weight)
+            material.waste = request.get_json().get('waste', material.waste)
+            material.weight = round(float(material.total_weight) * (1 - float(material.waste) / 100), 2)
+            material.price_per_kg = request.get_json().get('price_per_kg', material.price_per_kg)
+            material.total_price = request.get_json().get('total_price', material.total_price)
+            material.payed_price = request.get_json().get('payed_price', material.payed_price)
+            material.debt = round(float(material.total_price) - float(material.payed_price), 2)
+            material.provider = request.get_json().get('provider', material.provider)
             db.session.commit()
             return jsonify(msg='Success')
         return jsonify("You are not admin"), 401
@@ -98,7 +99,7 @@ def setka():
         return jsonify("You are not admin"), 401
 
 
-# qarzni boshqarish 
+# qarzni boshqarish
 @bp.route('/debt')
 @jwt_required()
 def debt():
@@ -124,30 +125,28 @@ def debt():
 def report():
     user = db.get_or_404(Users, get_jwt_identity())
     if user.role == 'a':
-        granula_amount = GranulaAmount.query.filter_by(sklad=True).first() 
+        granula_amount = GranulaAmount.query.filter_by(sklad=False).first()
+
         data = {
             "poterya":GranulaSklad.query.with_entities(func.sum(GranulaSklad.material_weight - GranulaSklad.granula_weight)).all()[0][0],
-            "sklad":granula_amount.amount if granula_amount else "There isn't granula in the warehouse",
+            "sklad":granula_amount.weight if granula_amount else "There isn't granula in the warehouse",
             ###"обород"
         }
         return jsonify(data)
     return jsonify(msg="You are not admin"), 401
-    
-    
+
+
 # rasxod
 @bp.route('/expence', methods=['POST', 'GET'])
 def expence():
     if request.method == 'POST':
-        balance = Balance.query.filter_by(index1=True).first()
-        if balance and balance.amount > request.get_json().get('price'):
-            exp = Expence(
-                description = request.get_json().get('description'),
-                user = request.get_json().get('user'),
-                price = request.get_json().get('price')
-            )
-            db.session.add(exp)
-            balance.amount -= request.get_json().get('price')
-            db.session.commit()
+        exp = Expence(
+            description = request.get_json().get('description'),
+            user = request.get_json().get('user'),
+            price = request.get_json().get('price')
+        )
+        db.session.add(exp)
+        db.session.commit()
         return jsonify(msg='Created')
     else:
         exp = Expence.query.all()
@@ -177,6 +176,7 @@ def warehouse():
     data['material_amount'] = m_a.amount if m_a else "There isn't material in the warehouse"
     data['granula_amount'] = g_a.weight if g_a else "There isn't granula in the warehouse"
     return jsonify(data)
+
 
 # granula sklad
 @bp.route('/make-granula', methods=['GET', "POST"])
