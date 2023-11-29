@@ -7,8 +7,11 @@ class UserSerializer(Schema):
     id = fields.Integer(dump_only=True)
     first_name = fields.String(required=True)
     username = fields.String(required=True)
+    role = fields.String(required=True)
 
-user_schema = UserSerializer(many=True)
+user_schema = UserSerializer()
+users_schema = UserSerializer(many=True)
+
 
 
 class GranulaMaterialSerializer(Schema):
@@ -34,7 +37,7 @@ class SetkaSerializer(Schema):
     id = fields.Integer(dump_only=True)
     setka_type = fields.String(required=True)
     bulk = fields.Float(required=True)
-    date = fields.DateTime()
+    date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 setka_schemas = SetkaSerializer(many=True)
 
@@ -216,3 +219,13 @@ class SaledProductSerializer(Schema):
     products = fields.Nested(SelectedProductSerializer, dump_only=True, required=True, many=True)
 
 saled_product_schema = SaledProductSerializer(many=True)
+
+
+class WriteTransactionSerializer(Schema):
+    id = fields.Integer(dump_only=True)
+    user = fields.String(required=True)
+    amount = fields.Integer(required=True)
+    date = fields.DateTime(required=True, format='%Y-%m-%d')
+
+transaction_schemas = WriteTransactionSerializer(many=True)
+transaction_schema = WriteTransactionSerializer()

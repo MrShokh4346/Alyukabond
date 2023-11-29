@@ -32,7 +32,7 @@ def create_app():
     app.config["JWT_SECRET_KEY"] = os.environ['JWT_SECRET_KEY']
     app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=1)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
     app.config["SECRET_KEY"] = os.environ['SECRET_KEY']
     # app.config["CORS_HEADERS"] = "*"

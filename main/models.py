@@ -239,3 +239,16 @@ class Balance(db.Model):
     amount = db.Column(db.Float)
     index1 = db.Column(db.Boolean, default=True)
 
+
+class WriteTransaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user = db.Column(db.String)
+    amount = db.Column(db.Float)
+    date = db.Column(db.DateTime, default=datetime.now())
+
+
+class BlacklistToken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False)
+    token = db.Column(db.String, nullable=False)
+    blacklisted_on = db.Column(db.DateTime, nullable=False)

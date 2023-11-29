@@ -5,7 +5,7 @@ from main.auth import bp
 from main.models import *
 from main import jwt
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, create_refresh_token, get_jwt
-from main.serializers import user_schema
+from main.serializers import *
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -13,7 +13,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 @jwt_required()
 def user():
     user = db.get_or_404(Users, get_jwt_identity())
-    id = request.args.get('user_id')
+    id = request.args.get('user_id', None)
     data = request.get_json()
     if user.role == 'a':
         if request.method == 'POST':
@@ -30,8 +30,11 @@ def user():
             except AssertionError as err:
                 return jsonify(msg=f"{err}")
         elif request.method == 'GET':
+            if id is not None:
+                user = db.get_or_404(Users, id)
+                return jsonify(user_schema.dump(user))
             users = Users.query.all()
-            return jsonify(user_schema.dump(users))
+            return jsonify(users_schema.dump(users))
         elif request.method == 'PUT' or request.method == 'PATCH':
             try:
                 user = db.get_or_404(Users, id)
@@ -60,7 +63,7 @@ def login():
         if check_password_hash(user.password_hash, data.get('password')):
             access_token = create_access_token(identity=user.id)
             refresh_token = create_refresh_token(identity=user.id)
-            return jsonify(access_token=access_token, refresh_token=refresh_token)
+            return jsonify(access_token=access_token, refresh_token=refresh_token, role=user.role)
     return jsonify({"msg":"Bad username or password"})
 
 

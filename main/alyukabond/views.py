@@ -18,6 +18,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib import colors
+from .amounts import * 
 
 
 
@@ -48,90 +49,43 @@ def alyuminy_material():
         return jsonify(data)
     elif request.method == 'POST':
         if user.role == 'a':
-            amount_id = request.args.get('amount_id', 0)
-            amount = AluminyAmount.query.get(amount_id)
-            if not amount:
-                obj = AluminyAmount.query.filter_by(thickness=request.get_json().get('thickness'), 
-                                                width=request.get_json().get('list_width'),
-                                                color=request.get_json().get('color'),
-                                                type_aluminy=request.get_json().get('type')
-                                                ).first()
-                if obj:
-                    return jsonify(msg='This size already exists')
-                else:
-                    amount = AluminyAmount(color = request.get_json().get('color'),
-                                            thickness = request.get_json().get('thickness'),
-                                            width = request.get_json().get('list_width'),
-                                            type_aluminy=request.get_json().get('type'),
-                                            length = 0,
-                                            weight = 0
-                                            )
-                    db.session.add(amount)
-                    db.session.commit()
-            amount.surface += request.get_json().get('list_length') * request.get_json().get('quantity') * request.get_json().get('list_width')
-            amount.weight += request.get_json().get('roll_weight') * request.get_json().get('quantity')
-            db.session.commit()
-            material = Aluminy(
-                surface = amount.surface,
-                color = request.get_json().get('color'),
-                thickness = request.get_json().get('thickness'),
-                list_width = request.get_json().get('list_width'),
-                list_length = request.get_json().get('list_length'),
-                quantity = request.get_json().get('quantity'),
-                roll_weight = request.get_json().get('roll_weight'),
-                price_per_kg = request.get_json().get('price_per_kg'),
-                total_price_d = request.get_json().get('total_price_d'),
-                total_price_s = request.get_json().get('total_price_s'),
-                payed_price_d = request.get_json().get('payed_price_d'),
-                payed_price_s = request.get_json().get('payed_price_s'),
-                debt_d = request.get_json().get('debt_d'),
-                debt_s = request.get_json().get('debt_s'),
-                provider = request.get_json().get('provider'),
-                date = request.get_json().get('date')
-            )
-            db.session.add(material)
-            db.session.commit()
-            return jsonify(msg="Success"), 201
+            data = request.get_json()
+            amount_id = request.args.get('amount_id', None)
+            try:
+                surface = add_aluminy_amount(id=amount_id, thickness=data.get('thickness'), width=data.get('list_width'), 
+                    color=data.get('color'), type=data.get('type_aluminy'), length=data.get('list_length'), roll_weight=data.get('roll_weight'), quantity=data.get('quantity'))
+                material = Aluminy(**data, surface = surface)
+                db.session.add(material)
+                db.session.commit()
+                return jsonify(msg="Success"), 201
+            except AssertionError as err:
+                return jsonify(msg="This size already exists")
         return jsonify("You are not admin"), 401
     elif request.method == 'PUT' or request.method == 'PATCH':
         id = request.args.get('material_id')
         amount_id = request.args.get('amount_id', 0)
         if user.role == 'a':
+            data = request.get_json()
             material = Aluminy.query.get(id)
-            if material.list_length < request.get_json().get('list_length'):
-                extra_length = request.get_json().get('list_length') - material.list_length
-                extra_weight = request.get_json().get('roll_weight') - material.roll_weight
-                amount = AluminyAmount.query.filter_by(thickness=material.thickness, 
-                                                color=material.color,
-                                                type_aluminy=material.type_aluminy
-                                                ).first()
-                amount.surface += extra_length * request.get_json().get('quantity', material.quantity) * request.get_json().get('list_width', material.list_width)
-                amount.weight += extra_weight
-            elif material.list_length > request.get_json().get('list_length'):
-                extra_length = material.list_length - request.get_json().get('list_length') 
-                extra_weight = material.roll_weight - request.get_json().get('roll_weight')
-                amount = AluminyAmount.query.filter_by(thickness=material.thickness, 
-                                                color=material.color,
-                                                type_aluminy=material.type_aluminy
-                                                ).first()
-                amount.surface -= extra_length * request.get_json().get('quantity', material.quantity) * request.get_json().get('list_width', material.list_width)
-                amount.weight -= extra_weight
-            material.color = request.get_json().get('color', material.color)
-            material.thickness = request.get_json().get('thickness', material.thickness)
-            material.list_width = request.get_json().get('list_width', material.list_width)
-            material.list_length = request.get_json().get('list_length', material.list_length)
-            material.surface = material.list_width * material.list_length
-            material.quantity = request.get_json().get('quantity', material.quantity)
-            material.roll_weight = request.get_json().get('roll_weight', material.roll_weight)
-            material.price_per_kg = request.get_json().get('price_per_kg', material.price_per_kg)
-            material.total_price_d = request.get_json().get('total_price_d', material.total_price_d)
-            material.total_price_s = request.get_json().get('total_price_s', material.total_price_s)
-            material.payed_price_d = request.get_json().get('payed_price_d', material.payed_price_d)
-            material.payed_price_s = request.get_json().get('payed_price_s', material.payed_price_s)
-            material.debt_d = request.get_json().get('debt_d', material.debt_d)
-            material.debt_s = request.get_json().get('debt_s', material.debt_s)
-            material.provider = request.get_json().get('provider', material.provider)
-            material.date = request.get_json().get('date', material.date)
+            surface = update_aluminy_amount(material=material, thickness=data.get('thickness', None), color=data.get('color',None),
+                type=data.get('type_aluminy',None), list_length=data.get('list_length', material.list_length), 
+                list_width=data.get('list_width', material.list_width), roll_weight=data.get('roll_weight', material.roll_weight), quantity=data.get('quantity', material.quantity))
+            material.color = data.get('color', material.color)
+            material.thickness = data.get('thickness', material.thickness)
+            material.list_width = data.get('list_width', material.list_width)
+            material.list_length = data.get('list_length', material.list_length)
+            material.quantity = data.get('quantity', material.quantity)
+            material.roll_weight = data.get('roll_weight', material.roll_weight)
+            material.price_per_kg = data.get('price_per_kg', material.price_per_kg)
+            material.total_price_d = data.get('total_price_d', material.total_price_d)
+            material.total_price_s = data.get('total_price_s', material.total_price_s)
+            material.payed_price_d = data.get('payed_price_d', material.payed_price_d)
+            material.payed_price_s = data.get('payed_price_s', material.payed_price_s)
+            material.debt_d = data.get('debt_d', material.debt_d)
+            material.debt_s = data.get('debt_s', material.debt_s)
+            material.provider = data.get('provider', material.provider)
+            material.date = data.get('date', material.date)
+            material.surface = surface
             db.session.commit()
             return jsonify(msg='Success')
         return jsonify("You are not admin"), 401
@@ -159,69 +113,32 @@ def glue_material():
         return jsonify(data)
     elif request.method == 'POST':
         if user.role == 'a':
-            amount = GlueAmount.query.filter_by(index1=True).first()
-            if not amount:
-                amount = GlueAmount(
-                                    surface = 0,
-                                    weight = 0
-                                    )
-                db.session.add(amount)
-                db.session.commit()
-            width = request.get_json().get('width')
-            length = request.get_json().get('length')
-            quantity = request.get_json().get('quantity')
-            amount.surface += width * length * quantity
-            amount.weight += request.get_json().get('weight') * quantity
-            db.session.commit()
-            material = Glue(
-                thickness = request.get_json().get('thickness'),
-                width = request.get_json().get('width'),
-                length = request.get_json().get('length'),
-                quantity = request.get_json().get('quantity'),
-                surface = width * length * quantity,
-                weight = request.get_json().get('weight'),
-                price_per_kg = request.get_json().get('price_per_kg'),
-                total_price_d = request.get_json().get('total_price_d'),
-                total_price_s = request.get_json().get('total_price_s'),
-                payed_price_d = request.get_json().get('payed_price_d'),
-                payed_price_s = request.get_json().get('payed_price_s'),
-                debt_d = request.get_json().get('debt_d'),
-                debt_s = request.get_json().get('debt_s'),
-                provider = request.get_json().get('provider')
-            )
+            data = request.get_json()
+            surface = add_glue_amount(width=data.get("width", 2.44), length=data.get("length"), roll_weight=data.get("weight"), quantity=data.get("quantity"))
+            material = Glue(**data, surface = surface)
             db.session.add(material)
             db.session.commit()
             return jsonify(msg="Success"), 201
         return jsonify("You are not admin"), 401
     elif request.method == 'PUT' or request.method == 'PATCH':
         if user.role == 'a':
+            data = request.get_json()
             material = Glue.query.get(id)
-            if material.length < request.get_json().get('length'):
-                extra_length = request.get_json().get('length') - material.length
-                extra_weight = request.get_json().get('weight') - material.weight
-                amount = GlueAmount.query.filter_by(index1=True).first()
-                amount.surface += extra_length * request.get_json().get('quantity', material.quantity) * request.get_json().get('width', material.width)
-                amount.weight += extra_weight
-            elif material.length > request.get_json().get('length'):
-                extra_length = material.length - request.get_json().get('length') 
-                extra_weight = material.weight - request.get_json().get('weight')
-                amount = GlueAmount.query.filter_by(index1=True).first()
-                amount.surface -= extra_length * request.get_json().get('quantity', material.quantity) * request.get_json().get('width', material.width)
-                amount.weight -= extra_weight
-            material.thickness = request.get_json().get('thickness', material.thickness)
-            material.width = request.get_json().get('width', material.width)
-            material.length = request.get_json().get('length', material.length)
-            material.quantity = request.get_json().get('quantity', material.quantity)
-            material.surface =  material.width * material.length * material.quantity
-            material.weight = request.get_json().get('weight', material.weight)
-            material.price_per_kg = request.get_json().get('price_per_kg', material.price_per_kg)
-            material.total_price_d = request.get_json().get('total_price_d', material.total_price_d)
-            material.total_price_s = request.get_json().get('total_price_s', material.total_price_s)
-            material.payed_price_d = request.get_json().get('payed_price_d', material.payed_price_d)
-            material.payed_price_s = request.get_json().get('payed_price_s', material.payed_price_s)
-            material.debt_d = request.get_json().get('debt_d', material.debt_d)
-            material.debt_s = request.get_json().get('debt_s', material.debt_s)
-            material.provider = request.get_json().get('provider', material.provider)
+            surface = update_glue_amount(material=material,length=data.get('length', material.length), width=data.get('width', material.width), roll_weight=data.get('weight', material.weight), quantity=data.get('quantity', material.quantity))
+            material.thickness = data.get('thickness', material.thickness)
+            material.width = data.get('width', material.width)
+            material.length = data.get('length', material.length)
+            material.quantity = data.get('quantity', material.quantity)
+            material.surface =  surface
+            material.weight = data.get('weight', material.weight)
+            material.price_per_kg = data.get('price_per_kg', material.price_per_kg)
+            material.total_price_d = data.get('total_price_d', material.total_price_d)
+            material.total_price_s = data.get('total_price_s', material.total_price_s)
+            material.payed_price_d = data.get('payed_price_d', material.payed_price_d)
+            material.payed_price_s = data.get('payed_price_s', material.payed_price_s)
+            material.debt_d = data.get('debt_d', material.debt_d)
+            material.debt_s = data.get('debt_s', material.debt_s)
+            material.provider = data.get('provider', material.provider)
             db.session.commit()
             return jsonify(msg='Success')
         return jsonify("You are not admin"), 401
@@ -249,71 +166,33 @@ def sticker_material():
         return jsonify(data)
     elif request.method == 'POST':
         if user.role == 'a':
+            data = request.get_json()
             amount_id = request.args.get('amount_id', 0)
-            amount = StickerAmount.query.get(amount_id)
-            if not amount:
-                obj = StickerAmount.query.filter_by(
-                                                type_sticker=request.get_json().get('type_sticker')).first()
-                if obj:
-                    return jsonify(msg='This size already exists')
-                else:
-                    amount = StickerAmount(
-                                        width = request.get_json().get('width'),
-                                        type_sticker = request.get_json().get('type_sticker'),
-                                        surface = 0
-                                        )
-                    db.session.add(amount)
-                    db.session.commit()
-            width = request.get_json().get('width')
-            length = request.get_json().get('lendth')
-            quantity = request.get_json().get('quantity')
-            amount.surface += width * length * quantity
-            db.session.commit()
-            material = Sticker(
-                type_sticker = request.get_json().get('type_sticker'),
-                width = request.get_json().get('width'),
-                length = request.get_json().get('lendth'),
-                quantity = request.get_json().get('quantity'),
-                weight = request.get_json().get('weight'),
-                surface = width * length * quantity,
-                price_per_surface = request.get_json().get('price_per_surface'),
-                total_price_d = request.get_json().get('total_price_d'),
-                total_price_s = request.get_json().get('total_price_s'),
-                payed_price_d = request.get_json().get('payed_price_d'),
-                payed_price_s = request.get_json().get('payed_price_s'),
-                debt_d = request.get_json().get('debt_d'),
-                debt_s = request.get_json().get('debt_s'),
-                provider = request.get_json().get('provider')
-            )
+            surface = add_sticker_amount(id=amount_id, width=data.get('width'),  type=data.get('type_sticker'), length=data.get('length'), quantity=data.get('quantity'))
+            material = Sticker(**data, surface = surface)
             db.session.add(material)
             db.session.commit()
             return jsonify(msg="Success"), 201
         return jsonify("You are not admin"), 401
     elif request.method == 'PUT' or request.method == 'PATCH':
         if user.role == 'a':
+            data = request.get_json()
             material = Sticker.query.get(id)
-            if material.length < request.get_json().get('length'):
-                extra_length = request.get_json().get('length') - material.length
-                amount = StickerAmount.query.filter_by(type_sticker=material.type_sticker).first()
-                amount.surface += extra_length * request.get_json().get('quantity', material.quantity) * request.get_json().get('width', material.width)
-            elif material.length > request.get_json().get('length'):
-                extra_length = material.length - request.get_json().get('length') 
-                amount = StickerAmount.query.filter_by(type_sticker=material.type_sticker).first()
-                amount.surface -= extra_length * request.get_json().get('quantity', material.quantity) * request.get_json().get('width', material.width)
-            material.type_sticker = request.get_json().get('type_sticker', material.type_sticker)
-            material.width = request.get_json().get('width', material.width)
-            material.length = request.get_json().get('length', material.length)
-            material.quantity = request.get_json().get('quantity', material.quantity)
-            material.weight = request.get_json().get('weight', material.weight)
-            material.surface = material.length * material.width * material.quantity
-            material.price_per_surface = request.get_json().get('price_per_surface', material.price_per_surface)
-            material.total_price_d = request.get_json().get('total_price_d', material.total_price_d)
-            material.total_price_s = request.get_json().get('total_price_s', material.total_price_s)
-            material.payed_price_d = request.get_json().get('payed_price_d', material.payed_price_d)
-            material.payed_price_s = request.get_json().get('payed_price_s', material.payed_price_s)
-            material.debt_d = request.get_json().get('debt_d', material.debt_d)
-            material.debt_s = request.get_json().get('debt_s', material.debt_s)
-            material.provider = request.get_json().get('provider', material.provider)
+            surface = update_sticker_amount(material=material,type=data.get('type_sticker', material.type_sticker), length=data.get('length', material.length), width=data.get('width', material.width),  quantity=data.get('quantity', material.quantity))
+            material.type_sticker = data.get('type_sticker', material.type_sticker)
+            material.width = data.get('width', material.width)
+            material.length = data.get('length', material.length)
+            material.quantity = data.get('quantity', material.quantity)
+            material.weight = data.get('weight', material.weight)
+            material.surface = surface
+            material.price_per_surface = data.get('price_per_surface', material.price_per_surface)
+            material.total_price_d = data.get('total_price_d', material.total_price_d)
+            material.total_price_s = data.get('total_price_s', material.total_price_s)
+            material.payed_price_d = data.get('payed_price_d', material.payed_price_d)
+            material.payed_price_s = data.get('payed_price_s', material.payed_price_s)
+            material.debt_d = data.get('debt_d', material.debt_d)
+            material.debt_s = data.get('debt_s', material.debt_s)
+            material.provider = data.get('provider', material.provider)
             db.session.commit()
             return jsonify(msg='Success')
         return jsonify("You are not admin"), 401
@@ -328,10 +207,9 @@ def sticker_material():
 
 def check(turi=None, rangi=None, qalinligi=None, yuza=None, ogirlik=None, sort=1, miqdor=1):
     for obj in ['alyuminy', 'sticker', 'glue', 'granula']:
-        st_type = 2 if turi == "450" else 1
         amount = {
             'alyuminy': AluminyAmount.query.filter_by(color=rangi, type_aluminy=turi, thickness=qalinligi).first(),
-            'sticker': StickerAmount.query.filter_by(type_sticker=st_type).first(),
+            'sticker': StickerAmount.query.filter_by(type_sticker=turi).first(),
             'glue': GlueAmount.query.filter_by(index1=True).first(),
             'granula':GranulaAmount.query.filter_by(sklad=False).first()
         }.get(obj, False)
@@ -655,6 +533,19 @@ def balance():
     return jsonify(data)
 
 
+@bp.route('/transaction', methods=['GET', 'POST', 'PUT', 'PATCH'])
+def transaction():
+    if request.method == 'GET':
+        id = request.args.get("transaction_id", None)
+        if id is not None:
+            tr = db.get_or_404(WriteTransaction, id)
+            return jsonify(transaction_schema.dump(tr))
+        trs = WriteTransaction.query.all()
+        return jsonify(transaction_schemas.dump(trs))
+    elif request.method == 'POST':
+        pass
+
+
 @bp.route('/report-excel/<int:id>')
 def report_excel(id):
     source_excel_file = 'main/alyukabond/report.xlsx'
@@ -698,32 +589,4 @@ def report_excel(id):
             destination_sheet[cell_address] = value
         destination_wb.save(destination_excel_file)
     destination_wb.close()
-
-
-    workbook = load_workbook(destination_excel_file)
-    sheet = workbook.active
-
-    # Extract data from Excel sheet
-    data = []
-    for row in sheet.iter_rows(values_only=True):
-        data.append(row)
-
-    # Create a PDF file with A4 page size
-    pdf_file_path = pdf_file
-    pdf = SimpleDocTemplate(pdf_file_path, pagesize=A4)
-
-    # Create a table from the Excel data
-    table = Table(data)
-
-    # Add style to the table
-    style = TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                        ('GRID', (0, 0), (-1, -1), 1, colors.black)])
-
-    table.setStyle(style)
-
-    # Build the PDF with the table
-    pdf.build([table])
-
     return jsonify(data_to_write)
