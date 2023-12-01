@@ -19,7 +19,7 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib import colors
 from .amounts import * 
-
+from .balance import *
 
 
 @bp.route('/exchange-rate', methods=['GET', 'POST'])
@@ -50,23 +50,23 @@ def alyuminy_material():
     elif request.method == 'POST':
         if user.role == 'a':
             data = request.get_json()
-            amount_id = request.args.get('amount_id', None)
             try:
                 surface = add_aluminy_amount(thickness=data.get('thickness'), width=data.get('list_width'), 
                     color=data.get('color'), type=data.get('type_aluminy'), length=data.get('list_length'), roll_weight=data.get('roll_weight'), quantity=data.get('quantity'))
                 material = Aluminy(**data, surface = surface)
                 db.session.add(material)
                 db.session.commit()
+                balance_minus(data.get("payed_price_s"))
                 return jsonify(msg="Success"), 201
             except AssertionError as err:
                 return jsonify(msg="This size already exists")
         return jsonify("You are not admin"), 401
     elif request.method == 'PUT' or request.method == 'PATCH':
         id = request.args.get('material_id')
-        amount_id = request.args.get('amount_id', 0)
         if user.role == 'a':
             data = request.get_json()
             material = Aluminy.query.get(id)
+            extra_sum = data.get("payed_price_s") - material.payed_price_s
             surface = update_aluminy_amount(material=material, thickness=data.get('thickness', None), color=data.get('color',None),
                 type=data.get('type_aluminy',None), list_length=data.get('list_length', material.list_length), 
                 list_width=data.get('list_width', material.list_width), roll_weight=data.get('roll_weight', material.roll_weight), quantity=data.get('quantity', material.quantity))
@@ -87,6 +87,7 @@ def alyuminy_material():
             material.date = data.get('date', material.date)
             material.surface = surface
             db.session.commit()
+            balance_minus(extra_sum)
             return jsonify(msg='Success')
         return jsonify("You are not admin"), 401
     elif request.method == 'DELETE':
@@ -118,12 +119,14 @@ def glue_material():
             material = Glue(**data, surface = surface)
             db.session.add(material)
             db.session.commit()
+            balance_minus(data.get("payed_price_s"))
             return jsonify(msg="Success"), 201
         return jsonify("You are not admin"), 401
     elif request.method == 'PUT' or request.method == 'PATCH':
         if user.role == 'a':
             data = request.get_json()
             material = Glue.query.get(id)
+            extra_sum = data.get("payed_price_s") - material.payed_price_s
             surface = update_glue_amount(material=material,length=data.get('length', material.length), width=data.get('width', material.width), roll_weight=data.get('weight', material.weight), quantity=data.get('quantity', material.quantity))
             material.thickness = data.get('thickness', material.thickness)
             material.width = data.get('width', material.width)
@@ -140,6 +143,7 @@ def glue_material():
             material.debt_s = data.get('debt_s', material.debt_s)
             material.provider = data.get('provider', material.provider)
             db.session.commit()
+            balance_minus(extra_sum)
             return jsonify(msg='Success')
         return jsonify("You are not admin"), 401
     elif request.method == 'DELETE':
@@ -167,17 +171,18 @@ def sticker_material():
     elif request.method == 'POST':
         if user.role == 'a':
             data = request.get_json()
-            amount_id = request.args.get('amount_id', 0)
             surface = add_sticker_amount(width=data.get('width'),  type=data.get('type_sticker'), length=data.get('length'), quantity=data.get('quantity'))
             material = Sticker(**data, surface = surface)
             db.session.add(material)
             db.session.commit()
+            balance_minus(data.get("payed_price_s"))
             return jsonify(msg="Success"), 201
         return jsonify("You are not admin"), 401
     elif request.method == 'PUT' or request.method == 'PATCH':
         if user.role == 'a':
             data = request.get_json()
             material = Sticker.query.get(id)
+            extra_sum = data.get("payed_price_s") - material.payed_price_s
             surface = update_sticker_amount(material=material,type=data.get('type_sticker', material.type_sticker), length=data.get('length', material.length), width=data.get('width', material.width),  quantity=data.get('quantity', material.quantity))
             material.type_sticker = data.get('type_sticker', material.type_sticker)
             material.width = data.get('width', material.width)
@@ -194,6 +199,7 @@ def sticker_material():
             material.debt_s = data.get('debt_s', material.debt_s)
             material.provider = data.get('provider', material.provider)
             db.session.commit()
+            balance_minus(extra_sum)
             return jsonify(msg='Success')
         return jsonify("You are not admin"), 401
     elif request.method == 'DELETE':
@@ -203,7 +209,6 @@ def sticker_material():
             db.session.commit()
             return jsonify(msg="Deleted")
         return jsonify("You are not admin"), 401
-
 
 
 # alc_kg, alc_kg_s = 1.4, 5.922   # alyuminiy rangli kg
@@ -282,7 +287,6 @@ def make_aluykabond():
         return jsonify("You are not admin"), 401
 
 
-
 # sklad
 @bp.route('/warehouse')
 @jwt_required()
@@ -299,7 +303,7 @@ def warehouse():
     return jsonify(data)
 
 
-# mahsulot sotish
+# mahsulot sotish   ########### updata
 @bp.route('/create-sale', methods=['GET', 'POST'])
 def create_sale():
     if request.method == 'POST':
@@ -348,7 +352,6 @@ def create_sale():
 @bp.route('/price')
 def alyukabond_price():
     color = request.args.get('color')
-    print(color)
     sort = request.args.get('sort')
     typ = int(request.args.get('type'))
     aluminy_color = Aluminy.query.filter_by(color=f"{color}", type_aluminy=typ).order_by(Aluminy.date.desc()).first_or_404() 
@@ -507,7 +510,6 @@ def balance():
     glue = Glue.query.with_entities(func.sum(Glue.total_price_d)).filter(Glue.date.between(d, s)).all()
     sticker = Sticker.query.with_entities(func.sum(Sticker.total_price_d)).filter(Sticker.date.between(d, s)).all()
     exp = Expence.query.with_entities(func.sum(Expence.price)).all()
-    print((aluminy[0][0] + glue[0][0] + sticker[0][0]))
     data = {
         "balance":balance.amount if balance else 0,
         "profit":saled[0][0] - (aluminy[0][0] + glue[0][0] + sticker[0][0]),

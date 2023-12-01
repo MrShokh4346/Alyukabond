@@ -57,7 +57,7 @@ class GranulaAmount(db.Model):
     weight = db.Column(db.Float)
 
 
-class GranulaSklad(db.Model):
+class GranulaPoteriya(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     material_weight = db.Column(db.Float)
     granula_weight = db.Column(db.Float)
@@ -247,6 +247,7 @@ class Balance(db.Model):
 class WriteTransaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user = db.Column(db.String)
+    description = db.Column(db.String)
     amount = db.Column(db.Float)
     date = db.Column(db.DateTime, default=datetime.now())
 

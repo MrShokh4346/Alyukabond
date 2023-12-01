@@ -11,6 +11,7 @@ from werkzeug.utils import secure_filename
 from flask import  send_from_directory, url_for, jsonify, request
 from uuid import uuid1
 import os
+from .balance import balance_minus
 
 
 # xomashyo malumot kiritish
@@ -42,6 +43,7 @@ def material():
             )
             db.session.add(material)
             db.session.commit()
+            balance_minus(material.payed_price)
             material_amount = MaterialAmount.query.filter_by(index1=True).first()
             if not material_amount:
                 material_amount = MaterialAmount(amount=0, index1=True)
@@ -54,6 +56,7 @@ def material():
     elif request.method == 'PUT' or request.method == 'PATCH':
         if user.role == 'a':
             material = GranulaMaterial.query.get(id)
+            extra_sum = request.get_json().get('payed_price', material.payed_price) - material.payed_price
             material.name = request.get_json().get('name', material.name)
             material.type_material = request.get_json().get('type_material', material.type_material)
             material.total_weight = request.get_json().get('total_weight', material.total_weight)
@@ -65,6 +68,7 @@ def material():
             material.debt = round(float(material.total_price) - float(material.payed_price), 2)
             material.provider = request.get_json().get('provider', material.provider)
             db.session.commit()
+            balance_minus(extra_sum)
             return jsonify(msg='Success')
         return jsonify("You are not admin"), 401
     elif request.method == 'DELETE':
@@ -110,11 +114,11 @@ def debt():
     total_debt = 0
     if user.role == 'a':
         data['materials'].append(material_schemas.dump(GranulaMaterial.query.all()))
-        data['total'] = {
-            "total_sum":GranulaMaterial.query.with_entities(func.sum(GranulaMaterial.total_price)).all()[0][0],
-            "total_debt":GranulaMaterial.query.with_entities(func.sum(GranulaMaterial.debt)).all()[0][0],
-            "total_payed":GranulaMaterial.query.with_entities(func.sum(GranulaMaterial.payed_price)).all()[0][0],
-        }
+        data['total'] = []
+        data['total'].append({"total_sum":GranulaMaterial.query.with_entities(func.sum(GranulaMaterial.total_price)).all()[0][0]})
+        data['total'].append({"total_debt":GranulaMaterial.query.with_entities(func.sum(GranulaMaterial.debt)).all()[0][0]})
+        data['total'].append({"total_payed":GranulaMaterial.query.with_entities(func.sum(GranulaMaterial.payed_price)).all()[0][0]})
+
         return jsonify(data)
     return jsonify(msg="You are not admin"), 401
 
@@ -128,7 +132,7 @@ def report():
         granula_amount = GranulaAmount.query.filter_by(sklad=False).first()
 
         data = {
-            "poterya":GranulaSklad.query.with_entities(func.sum(GranulaSklad.material_weight - GranulaSklad.granula_weight)).all()[0][0],
+            "poterya":GranulaPoteriya.query.with_entities(func.sum(GranulaPoteriya.material_weight - GranulaPoteriya.granula_weight)).all()[0][0],
             "sklad":granula_amount.weight if granula_amount else "There isn't granula in the warehouse",
             ###"обород"
         }
@@ -147,6 +151,7 @@ def expence():
         )
         db.session.add(exp)
         db.session.commit()
+        balance_minus(exp.price)
         return jsonify(msg='Created')
     else:
         exp = Expence.query.all()
@@ -183,9 +188,9 @@ def warehouse():
 def make_granula():
     data = request.get_json()
     if request.method == 'POST':
-        granula = GranulaSklad(
+        granula = GranulaPoteriya(
             material_weight = data.get("material_weight"),
-            granula_weight = data.get("granula_weight"),##################### poteriya, provider
+            granula_weight = data.get("granula_weight"),
             provider = data.get('provider'),
             poteriya = data.get("material_weight") - data.get("granula_weight")
         )
@@ -199,7 +204,7 @@ def make_granula():
         return jsonify(msg="Success")
     else:
         data = {
-            'granulas':gr_sklad_schema.dump(GranulaSklad.query.all()),
+            'granulas':gr_sklad_schema.dump(GranulaPoteriya.query.all()),
             'amount':gr_amount_schema.dump(GranulaAmount.query.filter_by(sklad=False).first())
         }
         return jsonify(data)
