@@ -52,7 +52,7 @@ def alyuminy_material():
             data = request.get_json()
             amount_id = request.args.get('amount_id', None)
             try:
-                surface = add_aluminy_amount(id=amount_id, thickness=data.get('thickness'), width=data.get('list_width'), 
+                surface = add_aluminy_amount(thickness=data.get('thickness'), width=data.get('list_width'), 
                     color=data.get('color'), type=data.get('type_aluminy'), length=data.get('list_length'), roll_weight=data.get('roll_weight'), quantity=data.get('quantity'))
                 material = Aluminy(**data, surface = surface)
                 db.session.add(material)
@@ -114,7 +114,7 @@ def glue_material():
     elif request.method == 'POST':
         if user.role == 'a':
             data = request.get_json()
-            surface = add_glue_amount(width=data.get("width", 2.44), length=data.get("length"), roll_weight=data.get("weight"), quantity=data.get("quantity"))
+            surface = add_glue_amount(width=data.get("width", 1.22), length=data.get("length"), roll_weight=data.get("weight"), quantity=data.get("quantity"))
             material = Glue(**data, surface = surface)
             db.session.add(material)
             db.session.commit()
@@ -168,7 +168,7 @@ def sticker_material():
         if user.role == 'a':
             data = request.get_json()
             amount_id = request.args.get('amount_id', 0)
-            surface = add_sticker_amount(id=amount_id, width=data.get('width'),  type=data.get('type_sticker'), length=data.get('length'), quantity=data.get('quantity'))
+            surface = add_sticker_amount(width=data.get('width'),  type=data.get('type_sticker'), length=data.get('length'), quantity=data.get('quantity'))
             material = Sticker(**data, surface = surface)
             db.session.add(material)
             db.session.commit()
@@ -205,27 +205,6 @@ def sticker_material():
         return jsonify("You are not admin"), 401
 
 
-def check(turi=None, rangi=None, qalinligi=None, yuza=None, ogirlik=None, sort=1, miqdor=1):
-    for obj in ['alyuminy', 'sticker', 'glue', 'granula']:
-        amount = {
-            'alyuminy': AluminyAmount.query.filter_by(color=rangi, type_aluminy=turi, thickness=qalinligi).first(),
-            'sticker': StickerAmount.query.filter_by(type_sticker=turi).first(),
-            'glue': GlueAmount.query.filter_by(index1=True).first(),
-            'granula':GranulaAmount.query.filter_by(sklad=False).first()
-        }.get(obj, False)
-        
-        if amount is not None and (amount.surface > yuza * sort if obj=="alyuminy" else yuza):
-            if amount.surface if obj!="granula" else False:
-                amount.surface -= yuza * sort * miqdor if obj=="alyuminy" else yuza * miqdor
-            if amount.weight if obj!="sticker" else False:
-                amount.weight -= ogirlik[obj] * miqdor
-            msg="success"
-            db.session.commit()
-        else:
-            msg=f"There isn't enaugh {obj} in warehouse"
-            break
-    return msg
-
 
 # alc_kg, alc_kg_s = 1.4, 5.922   # alyuminiy rangli kg
 # al_kv = 3                       # alyuminiy kv 
@@ -237,66 +216,71 @@ def check(turi=None, rangi=None, qalinligi=None, yuza=None, ogirlik=None, sort=1
 
 # prixod
 @bp.route('/make-alyukabond', methods=['GET', "POST", 'PATCH', 'PUT', 'DELETE'])
+@jwt_required()
 def make_aluykabond():
-    data = request.get_json()
-    turi = request.get_json().get('type')
-    rangi = request.get_json().get('color')
-    qalinligi = request.get_json().get('aluminy_thickness')
-    yuza = request.get_json().get('length') * request.get_json().get('width', 1.22)
-    ogirlik = {
-            "alyuminy":1.4,
-            "glue":0.27,
-            "granula":10.3
+    user = db.get_or_404(Users, get_jwt_identity())
+    if request.method == 'GET':
+        alyukabonds = Alyukabond.query.all()
+        alyukabond_ammounts = AlyukabondAmount.query.all()
+        data = {
+            'alyukabond':alyukabond_schema.dump(alyukabonds),
+            'alyukabond_amount':alyukabond_amount_schema.dump(alyukabond_ammounts)
         }
-    sort = request.get_json().get('sort')
-    miqdor = request.get_json().get('quantity')
-    msg = check(turi, rangi, qalinligi, yuza, ogirlik, sort, miqdor)
-    if msg == 'success':
-        alyukabond = Alyukabond(
-            name = data.get('name'),
-            size = data.get('size'),
-            type_product = data.get('type'),
-            sort = data.get('sort'),
-            color = data.get('color'),
-            list_length = data.get('length'),
-            list_width = data.get('width'),
-            al_thickness = data.get('aluminy_thickness'),
-            product_thickness = data.get('product_thickness'),
-            quantity = data.get('quantity'),
-            provider = data.get('provider')
-        )
-        db.session.add(alyukabond)
-        amount_id = request.args.get('amount_id', 0)
-        amount = AlyukabondAmount.query.get(amount_id)
-        if amount:
-            pass
+        return jsonify(data)
+    elif request.method == 'POST':
+        data = request.get_json()
+        turi = data.get('type_product')
+        rangi1 = data.get('color1')
+        rangi2 = data.get('color2', None)
+        qalinligi = data.get('al_thickness')
+        yuza = data.get('list_length') * data.get('list_width', 1.22)
+        ogirlik = {
+                "alyuminy":1.4,
+                "glue":0.27,
+                "granula":10.3
+            }
+        sort = request.get_json().get('sort')
+        miqdor = request.get_json().get('quantity')
+        msg = check(turi=turi, rangi1=rangi1, rangi2=rangi2, qalinligi=qalinligi, yuza=yuza, ogirlik=ogirlik, sort=sort, miqdor=miqdor)
+        if msg == 'success':
+            alyukabond = Alyukabond(**data)
+            db.session.add(alyukabond)
+            add_alyukabond_amount(type=turi, color1=rangi1, color2=rangi2, length=data.get('list_length'), al_thickness=qalinligi, product_thickness=data.get('product_thickness'), quantity=miqdor)
+            return jsonify(msg='Success')
         else:
-            obj = AlyukabondAmount.query.filter_by(
-                                                type_product = data.get('type'),
-                                                sort = data.get('sort'),
-                                                color = data.get('color'),
-                                                list_length = data.get('length'),
-                                                al_thickness = data.get('aluminy_thickness'),
-                                                product_thickness = data.get('product_thickness')).first()
-            if obj:
-                return jsonify(msg='This size already exists')
-            else:
-                amount = AlyukabondAmount(size = data.get('size'),
-                                        type_product = data.get('type'),
-                                        sort = data.get('sort'),
-                                        color = data.get('color'),
-                                        list_length = data.get('length'),
-                                        list_width = data.get('width'),
-                                        al_thickness = data.get('aluminy_thickness'),
-                                        product_thickness = data.get('product_thickness'),
-                                        quantity=0)
-                db.session.add(amount)
-                db.session.commit()
-        amount.quantity += data.get('quantity')
-        db.session.commit()
-        return jsonify(msg='Success')
-    else:
-        return jsonify(msg=msg)
+            return jsonify(msg=msg)
+    elif request.method == 'PUT' or request.method == 'PATCH':
+        if user.role == 'a':
+            data = request.get_json()
+            material_id = request.args.get('material_id')
+            material = db.get_or_404(Alyukabond, material_id)
+            update_alyukabond_amount(material=material, type=data.get('type_product', material.type_product), sort=data.get('sort', material.sort), color1=data.get('color1', material.color1),
+                color2=data.get('color2', material.color2), length=data.get('list_length', material.list_length), width=data.get('list_width', material.list_width), al_thickness=data.get('al_thickness', material.al_thickness), 
+                product_thickness=data.get('product_thickness', material.product_thickness), quantity=data.get('quantity', material.quantity))
+            material.name = data.get('name', material.name)
+            material.size = data.get('size', material.size)
+            material.type_product = data.get('type_product', material.type_product)
+            material.sort = data.get('sort', material.sort)
+            material.color1 = data.get('color1', material.color1)
+            material.color2 = data.get('color2', material.color2)
+            material.list_length = data.get('list_length', material.list_length)
+            material.list_width = data.get('list_width', material.list_width)
+            material.al_thickness = data.get('al_thickness', material.al_thickness)
+            material.product_thickness = data.get('product_thickness', material.product_thickness)
+            material.quantity = data.get('quantity', material.quantity)
+            material.provider = data.get('provider', material.provider)
+            db.session.commit()
+            return jsonify(msg='Success')
+        return jsonify("You are not admin"), 401
+    elif request.method == 'DELETE':
+        if user.role == 'a':
+            id = request.args.get('material_id')
+            material = db.get_or_404(Alyukabond, id)
+            db.session.delete(material)
+            db.session.commit()
+            return jsonify(msg="Deleted")
+        return jsonify("You are not admin"), 401
+
 
 
 # sklad

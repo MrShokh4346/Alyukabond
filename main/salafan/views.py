@@ -185,7 +185,9 @@ def make_granula():
     if request.method == 'POST':
         granula = GranulaSklad(
             material_weight = data.get("material_weight"),
-            granula_weight = data.get("granula_weight")
+            granula_weight = data.get("granula_weight"),##################### poteriya, provider
+            provider = data.get('provider'),
+            poteriya = data.get("material_weight") - data.get("granula_weight")
         )
         db.session.add(granula)
         amount = GranulaAmount.query.filter_by(sklad=False).first()

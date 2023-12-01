@@ -50,7 +50,7 @@ class MaterialAmount(db.Model):
     index1 = db.Column(db.Boolean, default=True)
     amount = db.Column(db.Float)
 
-
+#
 class GranulaAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sklad = db.Column(db.Boolean, default=False)
@@ -61,6 +61,8 @@ class GranulaSklad(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     material_weight = db.Column(db.Float)
     granula_weight = db.Column(db.Float)
+    provider = db.Column(db.String)
+    poteriya = db.Column(db.Integer)
     date = db.Column(db.DateTime, default=datetime.now())
 
 
@@ -92,7 +94,7 @@ class Aluminy(db.Model):
     date = db.Column(db.DateTime, default=datetime.now())
     log = db.relationship('LogMaterial', backref=backref('aluminy'))
 
-# last added
+
 class AluminyAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type_aluminy = db.Column(db.Integer, nullable=False)
@@ -128,14 +130,14 @@ class GlueAmount(db.Model):
     surface = db.Column(db.Float)
     thickness = db.Column(db.Float)
     weight = db.Column(db.Float)  # gramm
-    width = db.Column(db.Float)
+    width = db.Column(db.Float, default=1.22)
     index1 = db.Column(db.Boolean, default=True)
 
 
 class Sticker(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    type_sticker = db.Column(db.Integer)
-    width = db.Column(db.Float)
+    type_sticker = db.Column(db.Integer, nullable=False)
+    width = db.Column(db.Float, default=1.22)
     quantity = db.Column(db.Integer)
     length = db.Column(db.Float)
     weight = db.Column(db.Float, default=1.22)
@@ -155,7 +157,7 @@ class Sticker(db.Model):
 class StickerAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type_sticker = db.Column(db.Integer)
-    width = db.Column(db.Float)
+    width = db.Column(db.Float, default=1.22)
     weight = db.Column(db.Float)
     surface = db.Column(db.Float)
     thickness = db.Column(db.Float)
@@ -165,12 +167,13 @@ class Alyukabond(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     size = db.Column(db.String)
-    type_product = db.Column(db.String)
+    type_product = db.Column(db.String, nullable=False)
     sort = db.Column(db.Integer)
-    color = db.Column(db.String)
+    color1 = db.Column(db.String, nullable=False)
+    color2 = db.Column(db.String)
     list_length = db.Column(db.Float)
-    list_width = db.Column(db.Float)
-    al_thickness = db.Column(db.Float)
+    list_width = db.Column(db.Float, default=1.22)
+    al_thickness = db.Column(db.Float, nullable=False)
     product_thickness = db.Column(db.Float)
     quantity = db.Column(db.Integer)
     provider = db.Column(db.String)
@@ -181,11 +184,12 @@ class AlyukabondAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     size = db.Column(db.String)
-    type_product = db.Column(db.String)
+    type_product = db.Column(db.String, nullable=False)
     sort = db.Column(db.String)
-    color = db.Column(db.String)
+    color1 = db.Column(db.String, nullable=False)
+    color2 = db.Column(db.String)
     list_length = db.Column(db.Float)
-    list_width = db.Column(db.Float)
+    list_width = db.Column(db.Float, default=1.22)
     al_thickness = db.Column(db.Float)
     product_thickness = db.Column(db.Float)
     quantity = db.Column(db.Integer)
