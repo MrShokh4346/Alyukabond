@@ -227,6 +227,7 @@ saled_product_schema = SaledProductSerializer(many=True)
 class WriteTransactionSerializer(Schema):
     id = fields.Integer(dump_only=True)
     user = fields.String(required=True)
+    status = fields.String(required=True)
     amount = fields.Integer(required=True)
     date = fields.DateTime(required=True, format='%Y-%m-%d')
 

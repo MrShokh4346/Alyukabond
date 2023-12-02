@@ -299,7 +299,7 @@ def warehouse():
     return jsonify(data)
 
 
-# mahsulot sotish   ########### updata
+# mahsulot sotish   
 @bp.route('/create-sale', methods=['GET', 'POST', 'PUT', 'PATCH'])
 @jwt_required()
 def create_sale():
@@ -388,9 +388,6 @@ def create_sale():
             return jsonify(msg="Deleted")
         return jsonify("You are not admin"), 401
         
-
-    
-
 
 # alyukabond narx
 @bp.route('/price')
@@ -564,16 +561,41 @@ def balance():
 
 
 @bp.route('/transaction', methods=['GET', 'POST', 'PUT', 'PATCH'])
+@jwt_required()
 def transaction():
+    user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'GET':
         id = request.args.get("transaction_id", None)
+        status = request.args.get("status")
         if id is not None:
             tr = db.get_or_404(WriteTransaction, id)
             return jsonify(transaction_schema.dump(tr))
-        trs = WriteTransaction.query.all()
+        trs = WriteTransaction.query.filter_by(status=status).all()
         return jsonify(transaction_schemas.dump(trs))
     elif request.method == 'POST':
-        pass
+        data = request.get_json()
+        if data['status'] == 'add':
+            print(user.username)
+            write = WriteTransaction(
+                    amount=data.get('amount'),
+                    user = user.username,
+                    description = data.get('description'),
+                    status = data.get('status')
+                    )
+            db.session.add(write)
+            db.session.commit()
+            balance_add(data.get("amount"))
+        else:
+            write = WriteTransaction(
+                    amount=data.get('amount'),
+                    user = user.username,
+                    description = data.get('description'),
+                    status = data.get('status')
+                    )
+            db.session.add(write)
+            db.session.commit()
+            balance_minus(data.get("amount"))
+        return jsonify(msg='Success')
 
 
 @bp.route('/report-excel/<int:id>')

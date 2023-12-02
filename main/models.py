@@ -28,6 +28,7 @@ class Users(db.Model):
         user = Users.query.filter_by(username=username).first()
         if user:
             raise AssertionError('This username already exists')
+        return username
         
     @validates('role')
     def validate_role(self, key, role):
@@ -35,6 +36,7 @@ class Users(db.Model):
             raise AssertionError('Role required')
         if role not in ['a', 'se', 'e']:
             raise AssertionError('Role shoude be (a/se/e)')
+        return role
         
 
 class ExchangeRate(db.Model):
@@ -46,6 +48,7 @@ class ExchangeRate(db.Model):
     def validate_rate(self, key, rate):
         if not rate:
             raise AssertionError('Rate required')
+        return rate
 
 
 class GranulaMaterial(db.Model):
@@ -67,11 +70,13 @@ class GranulaMaterial(db.Model):
     def validate_type_material(self, key, type_material):
         if not type_material:
             raise AssertionError("Type material required")
+        return type_material
         
     @validates("weight")
     def validate_weight(self, key, weight):
         if not weight:
             raise AssertionError("Type material required")
+        return weight
 
     total, payed =0, 0
     @validates("total_price")
@@ -80,6 +85,7 @@ class GranulaMaterial(db.Model):
         if not total_price_s:
             raise AssertionError("Total price required")
         total = total_price_s
+        return total_price_s
 
     @validates("payed_price")
     def validate_payed_price_s(self, key, payed_price_s):
@@ -87,11 +93,13 @@ class GranulaMaterial(db.Model):
         if not payed_price_s:
             raise AssertionError("Payed price required")
         payed = payed_price_s
+        return payed_price_s
     
     @validates("debt")
     def validate_debt_s(self, key, debt_s):
         if debt_s != total - payed:
             raise AssertionError("Sum of debt and payed price are not equal to total sum")
+        return debt_s
 
 
 class MaterialAmount(db.Model):
@@ -118,11 +126,13 @@ class GranulaPoteriya(db.Model):
     def validate_material_weight(self, key, material_weight):
         if not material_weight:
             raise AssertionError("Material weigth required")
+        return material_weight
 
     @validates('granula_weight')
     def validate_granula_weight(self, key, granula_weight):
         if not granula_weight:
             raise AssertionError("Granula weigth required")
+        return granula_weight
 
 
 class Setka(db.Model):
@@ -158,21 +168,19 @@ class Aluminy(db.Model):
             raise AssertionError("Type aluminy required")
         if type_aluminy not in [100, 150, 450]:
             raise AssertionError('Type aluminy shoude be (100/150/450)')
+        return type_aluminy
         
     @validates("color")
     def validate_type_aluminy(self, key, color):
         if not color:
             raise AssertionError("Color required")
+        return color
         
     @validates("thickness")
     def validate_thickness(self, key, thickness):
         if not thickness:
             raise AssertionError("Thickness required")
-
-    @validates("weight")
-    def validate_weight(self, key, weight):
-        if not weight:
-            raise AssertionError("Type material required")
+        return thickness
 
     total, payed =0, 0
     @validates("total_price_s")
@@ -181,6 +189,7 @@ class Aluminy(db.Model):
         if not total_price_s:
             raise AssertionError("Total price required")
         total = total_price_s
+        return total_price_s
 
     @validates("payed_price_s")
     def validate_payed_price_s(self, key, payed_price_s):
@@ -188,11 +197,14 @@ class Aluminy(db.Model):
         if not payed_price_s:
             raise AssertionError("Payed price required")
         payed = payed_price_s
+        return payed_price_s
     
     @validates("debt_s")
     def validate_debt_s(self, key, debt_s):
         if debt_s != total - payed:
             raise AssertionError("Sum of debt and payed price are not equal to total sum")
+        return debt_s
+
 
 class AluminyAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -222,11 +234,6 @@ class Glue(db.Model):
     provider = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
 
-    @validates("weight")
-    def validate_weight(self, key, weight):
-        if not weight:
-            raise AssertionError("Type material required")
-
     total, payed =0, 0
     @validates("total_price_s")
     def validate_total_pricet_s(self, key, total_price_s):
@@ -234,6 +241,7 @@ class Glue(db.Model):
         if not total_price_s:
             raise AssertionError("Total price required")
         total = total_price_s
+        return total_price_s
 
     @validates("payed_price_s")
     def validate_payed_price_s(self, key, payed_price_s):
@@ -241,12 +249,13 @@ class Glue(db.Model):
         if not payed_price_s:
             raise AssertionError("Payed price required")
         payed = payed_price_s
+        return payed_price_s
     
     @validates("debt_s")
     def validate_debt_s(self, key, debt_s):
         if debt_s != total - payed:
             raise AssertionError("Sum of debt and payed price are not equal to total sum")
-
+        return debt_s
 
 
 class GlueAmount(db.Model):
@@ -282,6 +291,7 @@ class Sticker(db.Model):
             raise AssertionError("Type sticker required")
         if type_sticker not in [100, 150, 450]:
             raise AssertionError('Type sticker shoude be (100/150/450)')
+        return type_sticker
     
     total, payed =0, 0
     @validates("total_price_s")
@@ -290,6 +300,7 @@ class Sticker(db.Model):
         if not total_price_s:
             raise AssertionError("Total price required")
         total = total_price_s
+        return total_price_s
 
     @validates("payed_price_s")
     def validate_payed_price_s(self, key, payed_price_s):
@@ -297,11 +308,13 @@ class Sticker(db.Model):
         if not payed_price_s:
             raise AssertionError("Payed price required")
         payed = payed_price_s
+        return payed_price_s
     
     @validates("debt_s")
     def validate_debt_s(self, key, debt_s):
         if debt_s != total - payed:
             raise AssertionError("Sum of debt and payed price are not equal to total sum")
+        return debt_s
 
 
 class StickerAmount(db.Model):
@@ -335,21 +348,25 @@ class Alyukabond(db.Model):
             raise AssertionError("Type product required")
         if type_product not in [100, 150, 450]:
             raise AssertionError('Type product shoude be (100/150/450)')
+        return type_product
 
     @validates("color1")
     def validate_color1(self, key, color1):
         if not color1:
             raise AssertionError("Color1 required")
+        return color1
 
     @validates("al_thickness")
     def validate_al_thickness(self, key, al_thickness):
         if not al_thickness:
             raise AssertionError("Aluminy thickness required")
+        return al_thickness
 
     @validates("product_thickness")
     def validate_product_thickness(self, key, product_thickness):
         if not product_thickness:
             raise AssertionError("Product thickness required")
+        return product_thickness
 
 
 class AlyukabondAmount(db.Model):
@@ -388,12 +405,14 @@ class SaledProduct(db.Model):
     debt_d = db.Column(db.Float)
     debt_s = db.Column(db.Float)
     date = db.Column(db.DateTime, default=datetime.now())
-    products = db.relationship('SelectedProduct',  backref=db.backref('saledproduct', lazy=True))
+    products = db.relationship('SelectedProduct',  backref=db.backref('saledproduct', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
 
     @validates("agreement_num")
     def validate_agreement_num(self, key, agreement_num):
         if not agreement_num:
             raise AssertionError("Agreement number required")
+        return agreement_num
+    
     total, payed =0, 0
     @validates("total_price_s")
     def validate_total_pricet_s(self, key, total_price_s):
@@ -401,6 +420,7 @@ class SaledProduct(db.Model):
         if not total_price_s:
             raise AssertionError("Total price required")
         total = total_price_s
+        return total_price_s
 
     @validates("payed_price_s")
     def validate_payed_price_s(self, key, payed_price_s):
@@ -408,11 +428,13 @@ class SaledProduct(db.Model):
         if not payed_price_s:
             raise AssertionError("Payed price required")
         payed = payed_price_s
+        return payed_price_s
     
     @validates("debt_s")
     def validate_debt_s(self, key, debt_s):
         if debt_s != total - payed:
             raise AssertionError("Sum of debt and payed price are not equal to total sum")
+        return debt_s
 
 
 class Expence(db.Model):
@@ -426,7 +448,7 @@ class Expence(db.Model):
     def validate_user(self, key, user):
         if not user:
             raise AssertionError('User required')
-
+        return user
 
 class Balance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -437,6 +459,7 @@ class Balance(db.Model):
 class WriteTransaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user = db.Column(db.String)
+    status = db.Column(db.String)
     description = db.Column(db.String)
     amount = db.Column(db.Float)
     date = db.Column(db.DateTime, default=datetime.now())
@@ -445,6 +468,13 @@ class WriteTransaction(db.Model):
     def validate_user(self, key, user):
         if not user:
             raise AssertionError('User required')
+        return user
+
+    @validates('status')
+    def validate_status(self, key, status):
+        if not status:
+            raise AssertionError('Status required')
+        return status
 
 
 class BlacklistToken(db.Model):
