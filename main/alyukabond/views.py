@@ -14,10 +14,6 @@ from sqlalchemy.exc import SQLAlchemyError
 import os
 from openpyxl import Workbook, load_workbook
 import shutil
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
-from reportlab.lib import colors
 from .amounts import * 
 from .balance import *
 
@@ -304,48 +300,96 @@ def warehouse():
 
 
 # mahsulot sotish   ########### updata
-@bp.route('/create-sale', methods=['GET', 'POST'])
+@bp.route('/create-sale', methods=['GET', 'POST', 'PUT', 'PATCH'])
+@jwt_required()
 def create_sale():
+    user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'POST':
-        data = request.get_json()
-        try:
-            saled = SaledProduct(
-                provider = data.get('provider'),
-                customer = data.get('customer'),
-                agreement_num = data.get('agreement_num'),
-                total_price_d = data.get('total_price_d'),
-                total_price_s = data.get('total_price_s'),
-                payed_price_d = data.get('payed_price_d'),
-                payed_price_s = data.get('payed_price_s'),
-                debt_d = data.get('debt_d'),
-                debt_s = data.get('debt_s')
-                )
-            db.session.add(saled)
-            db.session.commit()
-            for product in data.get('products'):   # [{'id':1, 'quantity':1},...]
-                prd = db.get_or_404(AlyukabondAmount, product['id'])
-                # total_price +=prd.price
-                if prd.quantity < product['quantity']:
-                    db.session.delete(saled)
+        if user.role == 'a':
+            data = request.get_json()
+            try:
+                saled = SaledProduct(
+                    provider = data.get('provider'),
+                    customer = data.get('customer'),
+                    agreement_num = data.get('agreement_num'),
+                    total_price_d = data.get('total_price_d'),
+                    total_price_s = data.get('total_price_s'),
+                    payed_price_d = data.get('payed_price_d'),
+                    payed_price_s = data.get('payed_price_s'),
+                    debt_d = data.get('debt_d'),
+                    debt_s = data.get('debt_s')
+                    )
+                db.session.add(saled)
+                db.session.commit()
+                for product in data.get('products'):   # [{'id':1, 'quantity':1},...]
+                    prd = db.get_or_404(AlyukabondAmount, product['id'])
+                    # total_price +=prd.price
+                    if prd.quantity < product['quantity']:
+                        db.session.delete(saled)
+                        db.session.commit()
+                        return jsonify(msg="There isn't enough product in warehouse")
+                    prd.quantity -= product['quantity']
+                    selected = SelectedProduct(saled_id=saled.id, product_id=prd.id, quantity=product['quantity'])
+                    db.session.add(selected)
                     db.session.commit()
-                    return jsonify(msg="There isn't enough product in warehouse")
-                selected = SelectedProduct(saled_id=saled.id, product_id=prd.id, quantity=product['quantity'])
-                db.session.add(selected)
-                db.session.commit()
-        except:
-            return jsonify(msg="Something went wrong")
-        else:
-            balance = Balance.query.filter_by(index1=True).first()
-            if not balance:
-                balance = Balance(amount=0)
-                db.session.add(balance) 
-                db.session.commit()
-            balance.amount += data.get('total_price_d')
-            db.session.commit()
-            return jsonify(msg="Created")
+            except:
+                return jsonify(msg="Something went wrong")
+            else:
+                balance_add(data.get('payed_price_s'))
+                return jsonify(msg="Created")
+        return jsonify("You are not admin"), 401
     elif request.method == 'GET':
         sales = SaledProduct.query.all()
         return jsonify(saled_product_schema.dump(sales))
+    elif request.method == 'PUT' or request.method == 'PATCH':
+        if user.role == 'a':
+            id = request.args.get('saled_id')
+            data = request.get_json()
+            saled = db.get_or_404(SaledProduct, id)
+            selected = db.session.execute(db.select(SelectedProduct).filter_by(saled_id=saled.id)).scalars().all()
+            lst = selected.copy()
+            for product in data.get('products'):
+                for st in selected:
+                    if product['id'] == st.product_id:
+                        prd = db.get_or_404(AlyukabondAmount, product['id'])
+                        extra_quantity = product['quantity'] - st.quantity
+                        prd.quantity -= extra_quantity
+                        st.quantity = product['quantity']
+                        lst.remove(st)
+                    else:
+                        prd = db.get_or_404(AlyukabondAmount, product['id'])
+                        if prd.quantity < product['quantity']:
+                            return jsonify(msg="There isn't enough product in warehouse")
+                        prd.quantity -= product['quantity']
+                        selected = SelectedProduct(saled_id=saled.id, product_id=prd.id, quantity=product['quantity'])
+                        db.session.add(selected)
+            for s in lst:
+                db.session.delete(s)
+            extra_sum = data.get('payed_price_s', saled.payed_price_s) - saled.payed_price_s
+            saled.driver = data.get('driver', saled.driver)
+            saled.customer = data.get('customer', saled.customer)
+            saled.vehicle_number = data.get('vehicle_number', saled.vehicle_number)
+            saled.agreement_num = data.get('agreement_num', saled.agreement_num)
+            saled.total_price_d = data.get('total_price_d', saled.total_price_d)
+            saled.total_price_s = data.get('total_price_s', saled.total_price_s)
+            saled.payed_price_d = data.get('payed_price_d', saled.payed_price_d)
+            saled.payed_price_s = data.get('payed_price_s', saled.payed_price_s)
+            saled.debt_d = data.get('debt_d', saled.debt_d)
+            saled.debt_s = data.get('debt_s', saled.debt_s)
+            db.session.commit()
+            balance_add(extra_sum)
+            return jsonify(msg='Success')
+        return jsonify("You are not admin"), 401
+    elif request.method == 'DELETE':
+        if user.role == 'a':
+            material = db.get_or_404(SaledProduct, id)
+            db.session.delete(material)
+            db.session.commit()
+            return jsonify(msg="Deleted")
+        return jsonify("You are not admin"), 401
+        
+
+    
 
 
 # alyukabond narx
