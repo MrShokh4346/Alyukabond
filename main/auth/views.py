@@ -3,13 +3,14 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint
 from main.auth import bp
 from main.models import *
-from main import jwt
+from main import jwt#, cross_origin
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, create_refresh_token, get_jwt
 from main.serializers import *
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
-@bp.route('/user', methods=['POST', 'GET', 'PUT', 'PATCH', 'DELETE'])
+@bp.route('/user-info', methods=['GET', 'POST','OPTIONS', 'PUT', 'PATCH', 'DELETE'])
+# @cross_origin(origin='*')
 @jwt_required()
 def user():
     user = db.get_or_404(Users, get_jwt_identity())

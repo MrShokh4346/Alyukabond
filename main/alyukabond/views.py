@@ -27,7 +27,7 @@ def exchange_rate():
         return jsonify(msg='Success')
     else:
         rate = ExchangeRate.query.order_by(ExchangeRate.date.desc()).first()
-        data = {"rate":rate.rate if rate else None, "date":rate.date if rate else None}
+        data = {"rate":rate.rate if rate else None, "date":f"{rate.date:%Y-%m-%d}" if rate else None}
         return jsonify(data)
 
 
@@ -55,39 +55,44 @@ def alyuminy_material():
                 balance_minus(data.get("payed_price_s"))
                 return jsonify(msg="Success"), 201
             except AssertionError as err:
-                return jsonify(msg="This size already exists")
+                return jsonify(msg=f"{str(err)}"), 400
         return jsonify("You are not admin"), 401
     elif request.method == 'PUT' or request.method == 'PATCH':
         id = request.args.get('material_id')
         if user.role == 'a':
             data = request.get_json()
-            material = Aluminy.query.get(id)
-            extra_sum = data.get("payed_price_s") - material.payed_price_s
-            surface = update_aluminy_amount(material=material, thickness=data.get('thickness', None), color=data.get('color',None),
-                type=data.get('type_aluminy',None), list_length=data.get('list_length', material.list_length), 
-                list_width=data.get('list_width', material.list_width), roll_weight=data.get('roll_weight', material.roll_weight), quantity=data.get('quantity', material.quantity))
-            material.color = data.get('color', material.color)
-            material.thickness = data.get('thickness', material.thickness)
-            material.list_width = data.get('list_width', material.list_width)
-            material.list_length = data.get('list_length', material.list_length)
-            material.quantity = data.get('quantity', material.quantity)
-            material.roll_weight = data.get('roll_weight', material.roll_weight)
-            material.price_per_kg = data.get('price_per_kg', material.price_per_kg)
-            material.total_price_d = data.get('total_price_d', material.total_price_d)
-            material.total_price_s = data.get('total_price_s', material.total_price_s)
-            material.payed_price_d = data.get('payed_price_d', material.payed_price_d)
-            material.payed_price_s = data.get('payed_price_s', material.payed_price_s)
-            material.debt_d = data.get('debt_d', material.debt_d)
-            material.debt_s = data.get('debt_s', material.debt_s)
-            material.provider = data.get('provider', material.provider)
-            material.date = data.get('date', material.date)
-            material.surface = surface
-            db.session.commit()
-            balance_minus(extra_sum)
-            return jsonify(msg='Success')
+            try:
+                material = Aluminy.query.get(id)
+                extra_sum = data.get("payed_price_s") - material.payed_price_s
+                surface = update_aluminy_amount(material=material, thickness=data.get('thickness', None), color=data.get('color',None),
+                    type=data.get('type_aluminy',None), list_length=data.get('list_length', material.list_length), 
+                    list_width=data.get('list_width', material.list_width), roll_weight=data.get('roll_weight', material.roll_weight), quantity=data.get('quantity', material.quantity))
+                material.color = data.get('color', material.color)
+                material.surface += surface
+                material.thickness = data.get('thickness', material.thickness)
+                material.list_width = data.get('list_width', material.list_width)
+                material.list_length = data.get('list_length', material.list_length)
+                material.quantity = data.get('quantity', material.quantity)
+                material.roll_weight = data.get('roll_weight', material.roll_weight)
+                material.price_per_kg = data.get('price_per_kg', material.price_per_kg)
+                material.total_price_d = data.get('total_price_d', material.total_price_d)
+                material.total_price_s = data.get('total_price_s', material.total_price_s)
+                material.payed_price_d = data.get('payed_price_d', material.payed_price_d)
+                material.payed_price_s = data.get('payed_price_s', material.payed_price_s)
+                material.debt_d = data.get('debt_d', material.debt_d)
+                material.debt_s = data.get('debt_s', material.debt_s)
+                material.provider = data.get('provider', material.provider)
+                material.date = data.get('date', material.date)
+                material.surface = surface
+                db.session.commit()
+                balance_minus(extra_sum)
+                return jsonify(msg='Success')
+            except AssertionError as err:
+                return jsonify(msg=f"{str(err)}"), 400
         return jsonify("You are not admin"), 401
     elif request.method == 'DELETE':
         if user.role == 'a':
+            id = request.args.get("material_id")
             material = db.get_or_404(Aluminy, id)
             db.session.delete(material)
             db.session.commit()
@@ -110,37 +115,43 @@ def glue_material():
         return jsonify(data)
     elif request.method == 'POST':
         if user.role == 'a':
-            data = request.get_json()
-            surface = add_glue_amount(width=data.get("width", 1.22), length=data.get("length"), roll_weight=data.get("weight"), quantity=data.get("quantity"))
-            material = Glue(**data, surface = surface)
-            db.session.add(material)
-            db.session.commit()
-            balance_minus(data.get("payed_price_s"))
-            return jsonify(msg="Success"), 201
+            try:
+                data = request.get_json()
+                surface = add_glue_amount(width=data.get("width", 1.22), length=data.get("length"), roll_weight=data.get("weight"), quantity=data.get("quantity"))
+                material = Glue(**data, surface = surface)
+                db.session.add(material)
+                db.session.commit()
+                balance_minus(data.get("payed_price_s"))
+                return jsonify(msg="Success"), 201
+            except AssertionError as err:
+                return jsonify(msg=f"{str(err)}"), 400
         return jsonify("You are not admin"), 401
     elif request.method == 'PUT' or request.method == 'PATCH':
         if user.role == 'a':
-            data = request.get_json()
-            material = Glue.query.get(id)
-            extra_sum = data.get("payed_price_s") - material.payed_price_s
-            surface = update_glue_amount(material=material,length=data.get('length', material.length), width=data.get('width', material.width), roll_weight=data.get('weight', material.weight), quantity=data.get('quantity', material.quantity))
-            material.thickness = data.get('thickness', material.thickness)
-            material.width = data.get('width', material.width)
-            material.length = data.get('length', material.length)
-            material.quantity = data.get('quantity', material.quantity)
-            material.surface =  surface
-            material.weight = data.get('weight', material.weight)
-            material.price_per_kg = data.get('price_per_kg', material.price_per_kg)
-            material.total_price_d = data.get('total_price_d', material.total_price_d)
-            material.total_price_s = data.get('total_price_s', material.total_price_s)
-            material.payed_price_d = data.get('payed_price_d', material.payed_price_d)
-            material.payed_price_s = data.get('payed_price_s', material.payed_price_s)
-            material.debt_d = data.get('debt_d', material.debt_d)
-            material.debt_s = data.get('debt_s', material.debt_s)
-            material.provider = data.get('provider', material.provider)
-            db.session.commit()
-            balance_minus(extra_sum)
-            return jsonify(msg='Success')
+            try:
+                data = request.get_json()
+                material = Glue.query.get(id)
+                extra_sum = data.get("payed_price_s") - material.payed_price_s
+                surface = update_glue_amount(material=material, length=data.get('length', material.length), width=data.get('width', material.width), roll_weight=data.get('weight', material.weight), quantity=data.get('quantity', material.quantity))
+                material.thickness = data.get('thickness', material.thickness)
+                material.width = data.get('width', material.width)
+                material.length = data.get('length', material.length)
+                material.quantity = data.get('quantity', material.quantity)
+                material.surface += surface
+                material.weight = data.get('weight', material.weight)
+                material.price_per_kg = data.get('price_per_kg', material.price_per_kg)
+                material.total_price_d = data.get('total_price_d', material.total_price_d)
+                material.total_price_s = data.get('total_price_s', material.total_price_s)
+                material.payed_price_d = data.get('payed_price_d', material.payed_price_d)
+                material.payed_price_s = data.get('payed_price_s', material.payed_price_s)
+                material.debt_d = data.get('debt_d', material.debt_d)
+                material.debt_s = data.get('debt_s', material.debt_s)
+                material.provider = data.get('provider', material.provider)
+                db.session.commit()
+                balance_minus(extra_sum)
+                return jsonify(msg='Success')
+            except AssertionError as err:
+                return jsonify(msg=f"{str(err)}"), 400
         return jsonify("You are not admin"), 401
     elif request.method == 'DELETE':
         if user.role == 'a':
@@ -166,37 +177,41 @@ def sticker_material():
         return jsonify(data)
     elif request.method == 'POST':
         if user.role == 'a':
-            data = request.get_json()
-            surface = add_sticker_amount(width=data.get('width'),  type=data.get('type_sticker'), length=data.get('length'), quantity=data.get('quantity'))
-            material = Sticker(**data, surface = surface)
-            db.session.add(material)
-            db.session.commit()
-            balance_minus(data.get("payed_price_s"))
-            return jsonify(msg="Success"), 201
+            try:
+                data = request.get_json()
+                surface = add_sticker_amount(width=data.get('width'),  type=data.get('type_sticker'), length=data.get('length'), quantity=data.get('quantity'))
+                material = Sticker(**data, surface = surface)
+                db.session.add(material)
+                db.session.commit()
+                balance_minus(data.get("payed_price_s"))
+                return jsonify(msg="Success"), 201
+            except AssertionError as err:
+                return jsonify(msg=f"{str(err)}"), 400
         return jsonify("You are not admin"), 401
     elif request.method == 'PUT' or request.method == 'PATCH':
         if user.role == 'a':
             data = request.get_json()
-            material = Sticker.query.get(id)
-            extra_sum = data.get("payed_price_s") - material.payed_price_s
-            surface = update_sticker_amount(material=material,type=data.get('type_sticker', material.type_sticker), length=data.get('length', material.length), width=data.get('width', material.width),  quantity=data.get('quantity', material.quantity))
-            material.type_sticker = data.get('type_sticker', material.type_sticker)
-            material.width = data.get('width', material.width)
-            material.length = data.get('length', material.length)
-            material.quantity = data.get('quantity', material.quantity)
-            material.weight = data.get('weight', material.weight)
-            material.surface = surface
-            material.price_per_surface = data.get('price_per_surface', material.price_per_surface)
-            material.total_price_d = data.get('total_price_d', material.total_price_d)
-            material.total_price_s = data.get('total_price_s', material.total_price_s)
-            material.payed_price_d = data.get('payed_price_d', material.payed_price_d)
-            material.payed_price_s = data.get('payed_price_s', material.payed_price_s)
-            material.debt_d = data.get('debt_d', material.debt_d)
-            material.debt_s = data.get('debt_s', material.debt_s)
-            material.provider = data.get('provider', material.provider)
-            db.session.commit()
-            balance_minus(extra_sum)
-            return jsonify(msg='Success')
+            try:
+                material = Sticker.query.get(id)
+                extra_sum = data.get("payed_price_s") - material.payed_price_s
+                surface = update_sticker_amount(material=material,type=data.get('type_sticker', material.type_sticker), length=data.get('length', material.length), width=data.get('width', material.width),  quantity=data.get('quantity', material.quantity))
+                material.type_sticker = data.get('type_sticker', material.type_sticker)
+                material.width = data.get('width', material.width)
+                material.length = data.get('length', material.length)
+                material.quantity = data.get('quantity', material.quantity)
+                material.surface += surface
+                material.total_price_d = data.get('total_price_d', material.total_price_d)
+                material.total_price_s = data.get('total_price_s', material.total_price_s)
+                material.payed_price_d = data.get('payed_price_d', material.payed_price_d)
+                material.payed_price_s = data.get('payed_price_s', material.payed_price_s)
+                material.debt_d = data.get('debt_d', material.debt_d)
+                material.debt_s = data.get('debt_s', material.debt_s)
+                material.provider = data.get('provider', material.provider)
+                db.session.commit()
+                balance_minus(extra_sum)
+                return jsonify(msg='Success')
+            except AssertionError as err:
+                return jsonify(msg=f"{str(err)}"), 400
         return jsonify("You are not admin"), 401
     elif request.method == 'DELETE':
         if user.role == 'a':
@@ -642,3 +657,4 @@ def report_excel(id):
         destination_wb.save(destination_excel_file)
     destination_wb.close()
     return jsonify(data_to_write)
+

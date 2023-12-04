@@ -273,9 +273,7 @@ class Sticker(db.Model):
     width = db.Column(db.Float, default=1.22)
     quantity = db.Column(db.Integer)
     length = db.Column(db.Float)
-    weight = db.Column(db.Float, default=1.22)
     surface = db.Column(db.Float)
-    price_per_surface = db.Column(db.Float)
     total_price_d = db.Column(db.Float)  
     total_price_s = db.Column(db.Float)  
     payed_price_d = db.Column(db.Float)
@@ -290,7 +288,7 @@ class Sticker(db.Model):
         if not type_sticker:
             raise AssertionError("Type sticker required")
         if type_sticker not in [100, 150, 450]:
-            raise AssertionError('Type sticker shoude be (100/150/450)')
+            raise AssertionError('Type sticker type shoude be (100/150/450)')
         return type_sticker
     
     total, payed =0, 0
@@ -321,7 +319,6 @@ class StickerAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type_sticker = db.Column(db.Integer)
     width = db.Column(db.Float, default=1.22)
-    weight = db.Column(db.Float)
     surface = db.Column(db.Float)
     thickness = db.Column(db.Float)
 

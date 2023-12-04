@@ -13,7 +13,6 @@ user_schema = UserSerializer()
 users_schema = UserSerializer(many=True)
 
 
-
 class GranulaMaterialSerializer(Schema):
     id = fields.Integer(dump_only=True)
     name = fields.String(required=True)
@@ -30,7 +29,6 @@ class GranulaMaterialSerializer(Schema):
 
 material_schemas = GranulaMaterialSerializer(many=True)
 material_schema = GranulaMaterialSerializer()
-
 
 
 class SetkaSerializer(Schema):
@@ -82,6 +80,7 @@ class GlueSerializer(Schema):
     thickness = fields.Float(required=True)
     surface = fields.Float(required=True)
     weight = fields.Float(required=True)
+    length = fields.Float(required=True)
     price_per_kg = fields.Float(required=True)
     quantity = fields.Integer(required=True)
     total_price_d = fields.Float(required=True)
@@ -111,11 +110,9 @@ class StickerSerializer(Schema):
     id = fields.Integer(dump_only=True)
     type_sticker = fields.Integer(required=True)
     width = fields.Float(required=True)
-    weight = fields.Float(required=True)
     length = fields.Float(required=True)    
     surface = fields.Float(required=True)
     total_surface = fields.Float(required=True)
-    price_per_surface = fields.Float(required=True)
     total_price_d = fields.Float(required=True)
     total_price_s = fields.Float(required=True)
     quantity = fields.Integer(required=True)
@@ -134,7 +131,6 @@ class StickerAmountSerializer(Schema):
     type_sticker = fields.Integer(required=True)
     width = fields.Float(required=True)
     surface = fields.Float(required=True)
-    weight = fields.Float(required=True)
 
 sticker_amount_schemas = StickerAmountSerializer(many=True)
 

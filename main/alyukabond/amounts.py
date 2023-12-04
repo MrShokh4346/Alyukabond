@@ -6,16 +6,17 @@ def add_aluminy_amount(thickness=None, width=None, color=None, type=None, length
         amount = AluminyAmount(color=color, thickness=thickness, width=width, type_aluminy=type, surface=0, weight=0)
         db.session.add(amount)
         db.session.commit()
-    amount.surface += length * quantity * width
+    surface = length * quantity * width
+    amount.surface += surface
     amount.weight += roll_weight * quantity
     db.session.commit()
-    return amount.surface
+    return surface
 
 
-def update_aluminy_amount(material:Aluminy=None, thickness=None, color=None, type=None, list_length=None, list_width=None, roll_weight=0, quantity=1, extra_length=None, extra_weight=None):
-    quantity = quantity if quantity else material.quantity
-    extra_length = list_length - material.list_length if extra_length is None else extra_length
-    extra_weight = quantity * (roll_weight - material.roll_weight) if extra_weight is None else extra_weight
+def update_aluminy_amount(material:Aluminy=None, thickness=None, color=None, type=None, list_length=None, list_width=1.22, roll_weight=0, quantity=1, extra_length=None, extra_weight=None):
+    extra_length = list_length - material.list_length if list_length!=material.list_length else list_length
+    extra_weight = roll_weight - material.roll_weight
+    extra_quantity = quantity - material.quantity if quantity!=material.quantity else quantity
     amount = AluminyAmount.query.filter_by(thickness=material.thickness, color=material.color, type_aluminy=material.type_aluminy).first()
     amount1 = AluminyAmount.query.filter_by(thickness=thickness, color=color, type_aluminy=type).first()
     if amount1 is None:
@@ -23,15 +24,21 @@ def update_aluminy_amount(material:Aluminy=None, thickness=None, color=None, typ
         db.session.add(amount1)
         db.session.commit()
     if amount == amount1:
-        amount1.surface += extra_length * (list_width if list_width else material.list_width)
-        amount1.weight += extra_weight 
+        surface = extra_length * extra_quantity  * list_width
+        weight = extra_weight * extra_quantity * (-1) if extra_weight<0 and extra_quantity<0 else extra_weight * extra_quantity
+        if extra_length != list_length and extra_quantity != quantity:
+            surface = material.list_length * extra_quantity * list_width
+            surface += extra_length * quantity * list_width
+        amount.surface += surface 
+        amount.weight += weight 
     else:
-        amount.surface -= list_length * quantity * (list_width if list_width else material.list_width)
-        amount.weight -= list_length * quantity
-        amount1.surface += abs(list_length) * (list_width if list_width else material.list_width) * quantity
-        amount1.weight += abs(list_length) * quantity
+        amount.surface -= material.list_length * material.quantity * list_width
+        amount.weight -= material.roll_weight * material.quantity
+        surface = list_length * list_width * quantity
+        amount1.surface += surface
+        amount1.weight += roll_weight * quantity
         db.session.commit()
-    return amount1.surface
+    return surface
 
 
 def add_glue_amount(width=1.22, length=0, roll_weight=0, quantity=1):
@@ -40,24 +47,30 @@ def add_glue_amount(width=1.22, length=0, roll_weight=0, quantity=1):
         amount = GlueAmount(surface = 0, weight = 0)
         db.session.add(amount)
         db.session.commit()
-    amount.surface += length * quantity * width
+    surface = length * quantity * width
+    amount.surface += surface
     amount.weight += roll_weight * quantity
     db.session.commit()
-    return amount.surface
+    return surface
 
 
-def update_glue_amount(material:Glue=None,length=None, width=1.22, roll_weight=0, quantity=None):
-    extra_length = length - material.length
+def update_glue_amount(material:Glue=None, length=None, width=1.22, roll_weight=0, quantity=0):
+    extra_length = length - material.length if length!=material.length else length
     extra_weight = roll_weight - material.weight
+    extra_quantity = quantity - material.quantity if quantity!=material.quantity else quantity
     amount = GlueAmount.query.filter_by(index1=True).first()
     if amount is None:
         amount = GlueAmount(surface = 0, weight = 0)
         db.session.add(amount)
         db.session.commit()
-    amount.surface += extra_length * (quantity if quantity else material.quantity) * (width if width else material.width)
-    amount.weight += extra_weight * (quantity if quantity else material.quantity)
+    surface = extra_length * extra_quantity  * width
+    if extra_length != length and extra_quantity != quantity:
+        surface = material.length * extra_quantity * width
+        surface += extra_length * quantity * width
+    amount.surface += surface 
+    amount.weight += extra_weight * quantity 
     db.session.commit()
-    return amount.surface
+    return surface
 
 
 def add_sticker_amount(width=1.22,  type=None, length=0, quantity=1):
@@ -66,13 +79,15 @@ def add_sticker_amount(width=1.22,  type=None, length=0, quantity=1):
         amount = StickerAmount(width=width, type_sticker=type, surface=0)
         db.session.add(amount)
         db.session.commit()
-    amount.surface += width * length * quantity
+    surface = width * length * quantity
+    amount.surface += surface
     db.session.commit()
-    return amount.surface
+    return surface
 
 
-def update_sticker_amount(material:Sticker=None,type=None, length=None, width=1.22,  quantity=1):
-    extra_length = length - material.length
+def update_sticker_amount(material:Sticker=None,type=None, length=None, width=1.22,  quantity=0):
+    extra_length = length - material.length if length!=material.length else length
+    extra_quantity = quantity - material.quantity if quantity!=material.quantity else quantity
     amount = StickerAmount.query.filter_by(type_sticker=material.type_sticker).first()
     amount1 = StickerAmount.query.filter_by( type_sticker=type).first()
     if amount1 is None:
@@ -80,12 +95,17 @@ def update_sticker_amount(material:Sticker=None,type=None, length=None, width=1.
         db.session.add(amount1)
         db.session.commit()
     if amount == amount1:
-        amount1.surface += extra_length * (quantity if quantity else material.quantity) * (width if width else material.width)
+        surface = extra_length * extra_quantity  * width
+        if extra_length != length and extra_quantity != quantity:
+            surface = material.length * extra_quantity * width
+            surface += extra_length * quantity * width
+        amount.surface += surface 
     else:
-        amount.surface -= length * (quantity if quantity else material.quantity) * (width if width else material.width)
-        amount1.surface += abs(length) * (quantity if quantity else material.quantity) * (width if width else material.width)
+        amount.surface -= material.length * material.quantity * width
+        surface = length * quantity * width
+        amount1.surface += surface
         db.session.commit()
-    return amount1.surface
+    return surface
 
 
 def add_alyukabond_amount(type=None, sort=None, color1=None, color2=None, length=None, al_thickness=None, product_thickness=None, quantity=1):
