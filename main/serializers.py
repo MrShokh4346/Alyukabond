@@ -60,6 +60,7 @@ class AluminySerializer(Schema):
     date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 aluminy_schemas = AluminySerializer(many=True)
+aluminy_schema = AluminySerializer()
 
 
 class AluminyAmountSerializer(Schema):
@@ -93,6 +94,7 @@ class GlueSerializer(Schema):
     date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 glue_schemas = GlueSerializer(many=True)
+glue_schema = GlueSerializer()
 
 
 class GlueAmountSerializer(Schema):
@@ -124,6 +126,7 @@ class StickerSerializer(Schema):
     date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 sticker_schemas = StickerSerializer(many=True)
+sticker_schema = StickerSerializer()
 
 
 class StickerAmountSerializer(Schema):
@@ -194,7 +197,8 @@ class AlyukabondSerializer(Schema):
     quantity = fields.Integer(required=True)
     date = fields.DateTime(required=True, format='%Y-%m-%d')
 
-alyukabond_schema = AlyukabondSerializer(many=True)
+alyukabond_schemas = AlyukabondSerializer(many=True)
+alyukabond_schema = AlyukabondSerializer()
 
 
 class SelectedProductSerializer(Schema):
@@ -218,6 +222,7 @@ class SaledProductSerializer(Schema):
     products = fields.Nested(SelectedProductSerializer, dump_only=True, required=True, many=True)
 
 saled_product_schema = SaledProductSerializer(many=True)
+
 
 
 class WriteTransactionSerializer(Schema):
