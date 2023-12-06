@@ -12,6 +12,7 @@ from uuid import uuid1
 from sqlalchemy.exc import SQLAlchemyError
 import os
 from openpyxl import Workbook, load_workbook
+from sqlalchemy import text
 import shutil
 from .amounts import * 
 from .balance import *
@@ -36,11 +37,55 @@ def exchange_rate():
 def alyuminy_material():
     user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'GET':
+        data = {'providers':[], "amount":[]}
         material_id = request.args.get("material_id")
+        typ = request.args.get("type")
+        color = request.args.get("color")
+        thkn = request.args.get("thickness")
+        dt = request.args.get("date")
+        query = "SELECT * FROM aluminy WHERE "
+        query += f"type_aluminy={typ} AND" if typ is not None else ''
+        query += f" color='{color}' AND" if color is not None else ''
+        query += f" thickness={thkn} AND" if thkn is not None else ''
+        query += f" date LIKE '%{dt}%' AND" if dt is not None else ''
+        query = query[:-4]
+        if typ or color or thkn or dt:
+            prds = db.session.execute(text(query)).fetchall()
+            for prd in prds:
+                data['providers'].append({
+                    "type_aluminy" : prd.type_aluminy,
+                    "color" : prd.color,
+                    "thickness" : prd.thickness,
+                    "list_width" : prd.list_width,
+                    "list_length" : prd.list_length,
+                    "roll_weight" : prd.roll_weight,
+                    "price_per_kg" : prd.price_per_kg,
+                    "total_price_d" : prd.total_price_d,
+                    "quantity" : prd.quantity,
+                    "total_price_s" : prd.total_price_s,
+                    "surface" : prd.surface,
+                    "payed_price_d" : prd.payed_price_d,
+                    "payed_price_s" : prd.payed_price_s,
+                    "debt_d" : prd.debt_d,
+                    "debt_s" : prd.debt_s,
+                    "provider" : prd.provider,
+                    "date" : f"{prd.date}"[:10]
+                })
+            mf_query = query.split('date')[0][:query.rfind('AND')] if dt is not None else query
+            amounts = db.session.execute(text(mf_query.replace('aluminy', "aluminy_amount", 1)))
+            for amount in amounts:
+                data['amount'].append({
+                    "type_aluminy":amount[0],
+                    "color":amount[1],
+                    "thickness":amount[2],
+                    "width":amount[3],
+                    "surface":amount[4],
+                    "weight":amount[5]
+                })
+            return jsonify(data)
         if material_id is not None:
             return jsonify(aluminy_schema.dump(Aluminy.query.get_or_404(material_id)))
-        data = {}
-        materials = Aluminy.query.all()
+        materials = Aluminy.query.order_by(Aluminy.date.desc()).all()
         amounts = AluminyAmount.query.all()
         data['providers'] = aluminy_schemas.dump(materials)
         data['amount'] = al_amount_schema.dump(amounts)
@@ -109,10 +154,15 @@ def glue_material():
     id = request.args.get('material_id')
     user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'GET':
+        data = {}
         material_id = request.args.get("material_id")
+        dt = request.args.get("date")
+        if dt:
+            data['providers'] = glue_schemas.dump(Glue.query.filter(Glue.date.like(f"%{dt}%")).order_by(Glue.date.desc()).all())
+            data['amount'] = glue_amount_schemas.dump(GlueAmount.query.all())
+            return jsonify(data)
         if material_id is not None:
             return jsonify(glue_schema.dump(Glue.query.get_or_404(material_id)))
-        data = {}
         materials = Glue.query.all()
         amounts = GlueAmount.query.all()
         data['providers'] = glue_schemas.dump(materials)
@@ -174,7 +224,42 @@ def sticker_material():
     id = request.args.get('material_id')
     user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'GET':
+        data = {'providers':[], 'amount':[]}
         material_id = request.args.get("material_id")
+        typ = request.args.get("type")
+        dt = request.args.get("date")
+        query = "SELECT * FROM sticker WHERE "
+        query += f"type_sticker={typ} AND " if typ is not None else ''
+        query += f"date LIKE '%{dt}%' AND " if dt is not None else ''
+        query = query[:-5]
+        if typ or dt:
+            prds = db.session.execute(text(query)).fetchall()
+            for prd in prds:
+                data['providers'].append({
+                    "type_sticker" : prd.type_sticker,
+                    "width" : prd.width,
+                    "quantity" : prd.quantity,
+                    "length" : prd.length,
+                    "surface" : prd.surface,
+                    "total_price_d" : prd.total_price_d,
+                    "total_price_s" : prd.total_price_s,
+                    "payed_price_d" : prd.payed_price_d,
+                    "payed_price_s" : prd.payed_price_s,
+                    "debt_d" : prd.debt_d,
+                    "debt_s" : prd.debt_s,
+                    "provider" : prd.provider,
+                    "date" : f"{prd.date}"[:10]
+                })
+            mf_query = query.split('date')[0][:query.rfind('AND')] if dt is not None else query
+            amounts = db.session.execute(text(mf_query.replace('sticker', "sticker_amount", 1)))
+            for amount in amounts:
+                data['amount'].append({
+                    "type_sticker":amount.type_sticker,
+                    "width":amount.width,
+                    "surface":amount.surface,
+                    "thickness":amount.thickness,
+                })
+            return jsonify(data)
         if material_id is not None:
             return jsonify(sticker_schema.dump(Glue.query.get_or_404(material_id)))
         data = {}
