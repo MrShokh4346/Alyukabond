@@ -133,7 +133,6 @@ def update_alyukabond_aluminy(amount1, amount2):
     aluminy2.weight += old_weight
     new_surface = amount2.list_length * amount2.list_width * amount2.quantity
     new_weight = 1.4 * amount2.quantity
-    print(aluminy3)
     if (aluminy3 is not None and aluminy4 is not None) and (aluminy3.surface > new_surface and aluminy4.surface > new_surface):
         aluminy3.surface -= new_surface
         aluminy3.weight -= new_weight
@@ -141,7 +140,6 @@ def update_alyukabond_aluminy(amount1, amount2):
         aluminy4.weight -= new_weight
         db.session.commit()
     else:
-        print(1)
         raise AssertionError(f"There isn't enaugh this type of aluminy in warehouse")
 
 
@@ -213,7 +211,7 @@ def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, yuza=None, ogirli
         }.get(obj, False)
 
         aluminy2 = AluminyAmount.query.filter_by(color=rangi2, type_aluminy=turi, thickness=qalinligi).first() if obj == 'alyuminy' else None
-        if aluminy2 is not None and aluminy2.surface > yuza * miqdor:
+        if amount is not None and aluminy2 is not None and aluminy2.surface > yuza * miqdor:
             aluminy2.surface -= yuza * miqdor
             amount.weight -= ogirlik[obj] * miqdor
         elif aluminy2 is None and obj == 'alyuminy':
@@ -232,3 +230,13 @@ def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, yuza=None, ogirli
             break
     db.session.commit()
     return msg
+
+
+def add_makaron(turi, rang1, rang2, al_qal, uzunlik, miqdor):
+    amount = Makaron.query.filter_by(type_al=turi,color1=rang1,color2=rang2,al_thickness=al_qal).first()
+    if not amount:
+        amount = Makaron(type_al=turi,color1=rang1,color2=rang2,al_thickness=al_qal,amount=0)
+        db.session.add(amount)
+        db.session.commit()
+    amount.amount += 16.37 / 3 * (0.02 * uzunlik) * miqdor
+    db.session.commit()

@@ -327,7 +327,7 @@ class Alyukabond(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     size = db.Column(db.String)
-    type_product = db.Column(db.String, nullable=False)
+    type_product = db.Column(db.Integer, nullable=False)
     sort = db.Column(db.Integer)
     color1 = db.Column(db.String, nullable=False)
     color2 = db.Column(db.String, default=None)
@@ -370,7 +370,7 @@ class AlyukabondAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     size = db.Column(db.String)
-    type_product = db.Column(db.String, nullable=False)
+    type_product = db.Column(db.Integer, nullable=False)
     sort = db.Column(db.String)
     color1 = db.Column(db.String, nullable=False)
     color2 = db.Column(db.String)
@@ -479,3 +479,12 @@ class BlacklistToken(db.Model):
     user_id = db.Column(db.Integer, nullable=False)
     token = db.Column(db.String, nullable=False)
     blacklisted_on = db.Column(db.DateTime, nullable=False)
+
+
+class Makaron(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    type_al = db.Column(db.Integer)
+    color1 = db.Column(db.String)
+    color2 = db.Column(db.String)
+    al_thickness = db.Column(db.Float)
+    amount = db.Column(db.Float)

@@ -6,6 +6,8 @@ def balance_minus(amount):
         balance = Balance(amount=0)
         db.session.add(balance)
         db.session.commit()
+    if balance.amount < amount:
+        raise AssertionError("There is not enough money in the balance")
     balance.amount -= amount
     db.session.commit()
 

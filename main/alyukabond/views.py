@@ -42,14 +42,15 @@ def alyuminy_material():
         typ = request.args.get("type")
         color = request.args.get("color")
         thkn = request.args.get("thickness")
-        dt = request.args.get("date")
+        from_d = request.args.get("from")
+        to_d = request.args.get("to")
         query = "SELECT * FROM aluminy WHERE "
         query += f"type_aluminy={typ} AND" if typ is not None else ''
         query += f" color='{color}' AND" if color is not None else ''
         query += f" thickness={thkn} AND" if thkn is not None else ''
-        query += f" date LIKE '%{dt}%' AND" if dt is not None else ''
+        query += f" date BETWEEN '{from_d}' AND '{to_d}' AND" if from_d is not None and to_d is not None else ''
         query = query[:-4]
-        if typ or color or thkn or dt:
+        if typ or color or thkn or (from_d and to_d):
             prds = db.session.execute(text(query)).fetchall()
             for prd in prds:
                 data['providers'].append({
@@ -71,16 +72,17 @@ def alyuminy_material():
                     "provider" : prd.provider,
                     "date" : f"{prd.date}"[:10]
                 })
-            mf_query = query.split('date')[0][:query.rfind('AND')] if dt is not None else query
-            amounts = db.session.execute(text(mf_query.replace('aluminy', "aluminy_amount", 1)))
+            if (from_d is not None) and (to_d is not None):
+                query = query[:query.rfind('AND', 0, -40)]
+            amounts = db.session.execute(text(query.replace('aluminy', "aluminy_amount", 1)))
             for amount in amounts:
                 data['amount'].append({
-                    "type_aluminy":amount[0],
-                    "color":amount[1],
-                    "thickness":amount[2],
-                    "width":amount[3],
-                    "surface":amount[4],
-                    "weight":amount[5]
+                    "type_aluminy":amount.type_aluminy,
+                    "color":amount.color,
+                    "thickness":amount.thickness,
+                    "width":amount.width,
+                    "surface":amount.surface,
+                    "weight":amount.weight
                 })
             return jsonify(data)
         if material_id is not None:
@@ -94,7 +96,7 @@ def alyuminy_material():
         if user.role == 'a':
             data = request.get_json()
             try:
-                surface = add_aluminy_amount(thickness=data.get('thickness'), width=data.get('list_width'), 
+                surface = add_aluminy_amount(thickness=data.get('thickness'), width=data.get('list_width', 1.22), 
                     color=data.get('color'), type=data.get('type_aluminy'), length=data.get('list_length'), roll_weight=data.get('roll_weight'), quantity=data.get('quantity'))
                 material = Aluminy(**data, surface = surface)
                 db.session.add(material)
@@ -156,9 +158,10 @@ def glue_material():
     if request.method == 'GET':
         data = {}
         material_id = request.args.get("material_id")
-        dt = request.args.get("date")
-        if dt:
-            data['providers'] = glue_schemas.dump(Glue.query.filter(Glue.date.like(f"%{dt}%")).order_by(Glue.date.desc()).all())
+        from_d = request.args.get("from")
+        to_d = request.args.get("to")
+        if from_d and to_d:
+            data['providers'] = glue_schemas.dump(Glue.query.filter(Glue.date.between(f"{from_d}", f"{to_d}")).order_by(Glue.date.desc()).all())
             data['amount'] = glue_amount_schemas.dump(GlueAmount.query.all())
             return jsonify(data)
         if material_id is not None:
@@ -227,12 +230,13 @@ def sticker_material():
         data = {'providers':[], 'amount':[]}
         material_id = request.args.get("material_id")
         typ = request.args.get("type")
-        dt = request.args.get("date")
+        from_d = request.args.get("from")
+        to_d = request.args.get("to")
         query = "SELECT * FROM sticker WHERE "
         query += f"type_sticker={typ} AND " if typ is not None else ''
-        query += f"date LIKE '%{dt}%' AND " if dt is not None else ''
-        query = query[:-5]
-        if typ or dt:
+        query += f" date BETWEEN '{from_d}' AND '{to_d}' AND" if from_d is not None and to_d is not None else ''
+        query = query[:-4]
+        if typ or (from_d and to_d):
             prds = db.session.execute(text(query)).fetchall()
             for prd in prds:
                 data['providers'].append({
@@ -250,8 +254,9 @@ def sticker_material():
                     "provider" : prd.provider,
                     "date" : f"{prd.date}"[:10]
                 })
-            mf_query = query.split('date')[0][:query.rfind('AND')] if dt is not None else query
-            amounts = db.session.execute(text(mf_query.replace('sticker', "sticker_amount", 1)))
+            if (from_d is not None) and (to_d is not None):
+                query = query[:query.rfind('AND', 0, -40)]
+            amounts = db.session.execute(text(query.replace('sticker', "sticker_amount", 1)))
             for amount in amounts:
                 data['amount'].append({
                     "type_sticker":amount.type_sticker,
@@ -272,7 +277,7 @@ def sticker_material():
         if user.role == 'a':
             try:
                 data = request.get_json()
-                surface = add_sticker_amount(width=data.get('width'),  type=data.get('type_sticker'), length=data.get('length'), quantity=data.get('quantity'))
+                surface = add_sticker_amount(width=data.get('width', 1.22),  type=data.get('type_sticker'), length=data.get('length'), quantity=data.get('quantity'))
                 material = Sticker(**data, surface = surface)
                 db.session.add(material)
                 db.session.commit()
@@ -329,7 +334,58 @@ def sticker_material():
 def make_aluykabond():
     user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'GET':
+        data = {'providers':[], 'amount':[]}
         material_id = request.args.get("material_id")
+        typ = request.args.get("type")
+        color1 = request.args.get("color1")
+        color2 = request.args.get("color2")
+        thkn = request.args.get("al_thickness")
+        from_d = request.args.get("from")
+        to_d = request.args.get("to")
+        query = "SELECT * FROM alyukabond WHERE "
+        query += f"type_product={typ} AND" if typ is not None else ''
+        query += f" color1='{color1}' AND" if color1 is not None else ''
+        query += f" color2='{color2}' AND" if color2 is not None else ''
+        query += f" al_thickness={thkn} AND" if thkn is not None else ''
+        query += f" date BETWEEN '{from_d}' AND '{to_d}' AND" if from_d is not None and to_d is not None else ''
+        query = query[:-4]
+        if typ or color1 or thkn or (from_d and to_d):
+            prds = db.session.execute(text(query)).fetchall()
+            for prd in prds:
+                data['providers'].append({
+                    "name" : prd.name,
+                    "size" : prd.size,
+                    "type_product" : prd.type_product,
+                    "sort" : prd.sort,
+                    "color1" : prd.color1,
+                    "color2" : prd.color2,
+                    "list_length" : prd.list_length,
+                    "list_width" : prd.list_width,
+                    "al_thickness" : prd.al_thickness,
+                    "product_thickness" : prd.product_thickness,
+                    "quantity" : prd.quantity,
+                    "provider" : prd.provider,
+                    "date" : f"{prd.date}"[:10]
+                })
+            if (from_d is not None) and (to_d is not None):
+                query = query[:query.rfind('AND', 0, -40)]
+            amounts = db.session.execute(text(query.replace('alyukabond', "alyukabond_amount", 1)))
+            for amount in amounts:
+                if amount.quantity > 0:
+                    data['amount'].append({
+                        "name":amount.name,
+                        "type_product":amount.type_product,
+                        "color1":amount.color1,
+                        "list_length":amount.list_length,
+                        "al_thickness":amount.al_thickness,
+                        "quantity":amount.quantity,
+                        "size":amount.size,
+                        "sort":amount.sort,
+                        "color2":amount.color2,
+                        "list_width":amount.list_width,
+                        "product_thickness":amount.product_thickness,
+                    })
+            return jsonify(data)
         if material_id is not None:
             return jsonify(alyukabond_schema.dump(Alyukabond.query.get_or_404(material_id)))
         alyukabonds = Alyukabond.query.all()
