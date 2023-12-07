@@ -236,3 +236,14 @@ class WriteTransactionSerializer(Schema):
 
 transaction_schemas = WriteTransactionSerializer(many=True)
 transaction_schema = WriteTransactionSerializer()
+
+class MakaronSerializer(Schema):
+    id = fields.Integer(dump_only=True)
+    type_al = fields.Integer(required=True)
+    color1 = fields.String(required=True)
+    color2 = fields.String(required=True)
+    al_thickness = fields.Float(required=True)
+    list_length = fields.Float(required=True)
+    weight = fields.Float(required=True)
+
+makaron_schema = MakaronSerializer(many=True)

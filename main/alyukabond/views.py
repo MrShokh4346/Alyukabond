@@ -562,21 +562,25 @@ def create_sale():
         return jsonify("You are not admin"), 401
         
 
-# alyukabond narx
+# sebestoymost
 @bp.route('/price')
 def alyukabond_price():
     color1 = request.args.get('color1')
     color2 = request.args.get('color2')
-    typ = int(request.args.get('type'))
-    aluminy_color = Aluminy.query.filter_by(color=f"{color1}", type_aluminy=typ).order_by(Aluminy.date.desc()).first_or_404() 
-    aluminy = Aluminy.query.filter_by(color=color2).order_by(Aluminy.date.desc()).first_or_404()
-    glue = Glue.query.order_by(Glue.date.desc()).first_or_404()
-    sticker = Sticker.query.filter_by(type_sticker=typ).order_by(Sticker.date.desc()).first_or_404()
-    aluminy_color_price = (aluminy_color.roll_weight * aluminy_color.quantity / aluminy_color.total_price_d) * 1.4
-    aluminy_price = (aluminy.roll_weight * aluminy.quantity / aluminy.total_price_d) * 1.4
-    glue_price = (glue.weight * glue.quantity / glue.total_price_d) * 0.27
-    sticker_price = (sticker.surface / sticker.total_price_d) * 3
-    granula = 8.24
+    thkn = int(request.args.get('al_thikness', 0))
+    typ = int(request.args.get('type', 0))
+    from_d = request.args.get('from')
+    to_d = request.args.get('to')
+    aluminy_color = Aluminy.query.filter(Aluminy.color==f"{color1}", Aluminy.type_aluminy==typ, Aluminy.thickness==thkn, Aluminy.date.between(f"{from_d}", f"{to_d}")).order_by(Aluminy.date.desc()).first_or_404() 
+    aluminy = Aluminy.query.filter(Aluminy.color==color2, Aluminy.type_aluminy==typ, Aluminy.thickness==thkn, Aluminy.date.between(f"{from_d}", f"{to_d}")).order_by(Aluminy.date.desc()).first_or_404()
+    glue = Glue.query.filter(Glue.date.between(f"{from_d}", f"{to_d}")).order_by(Glue.date.desc()).first_or_404()
+    sticker = Sticker.query.filter(Sticker.date.between(f"{from_d}", f"{to_d}"), Sticker.type_sticker==typ).order_by(Sticker.date.desc()).first_or_404()
+    material = GranulaMaterial.query.filter(GranulaMaterial.date.between(f"{from_d}", f"{to_d}" )).first_or_404()
+    aluminy_color_price = (aluminy_color.total_price_d / aluminy_color.roll_weight * aluminy_color.quantity) * 1.4
+    aluminy_price = (aluminy.total_price_d / aluminy.roll_weight * aluminy.quantity) * 1.4
+    glue_price = (glue.total_price_d / glue.weight * glue.quantity) * 0.27
+    sticker_price = (sticker.total_price_d / sticker.surface) * 3
+    granula = (material.total_price / material.weight) * 10.3
     data = {
         "aluminy_color1_price":round(aluminy_color_price, 2),
         "aluminy_color2_price":round(aluminy_price, 2),
@@ -716,11 +720,12 @@ def balance():
     glue = Glue.query.with_entities(func.sum(Glue.total_price_d)).filter(Glue.date.between(d, s)).all()
     sticker = Sticker.query.with_entities(func.sum(Sticker.total_price_d)).filter(Sticker.date.between(d, s)).all()
     exp = Expence.query.with_entities(func.sum(Expence.price)).all()
+    print(saled, aluminy, glue, sticker)
     data = {
         "balance":balance.amount if balance else 0,
-        "profit":(saled[0][0] - (aluminy[0][0] + glue[0][0] + sticker[0][0])) if saled and aluminy and glue and sticker else None,
-        "expence":exp[0][0] if exp else None,
-        "total":saled[0][0] if saled else None
+        "profit":(saled[0][0] - (aluminy[0][0] + glue[0][0] + sticker[0][0])) if saled[0][0] and aluminy[0][0] and glue[0][0] and sticker[0][0] else None,
+        "expence":exp[0][0],
+        "total":saled[0][0]
     }
     return jsonify(data)
 
@@ -771,7 +776,6 @@ def transaction():
         return jsonify(msg="You are not admin")
 
 
-
 @bp.route('/report-excel/<int:id>')
 def report_excel(id):
     source_excel_file = 'main/alyukabond/report_template.xlsx'
@@ -805,4 +809,38 @@ def report_excel(id):
         destination_wb.save(destination_excel_file)
     destination_wb.close()
     return send_from_directory("../report", "report.xlsx")
+
+
+@bp.route('/makaron', methods=['GET','POST', 'DELETE'])
+def add_makaron():
+    if request.method == 'GET':
+        makaron = Makaron.query.all()
+        return jsonify(makaron_schema.dump(makaron))
+    elif request.method == 'POST':
+        data = request.get_json()
+        makaron = Makaron.query.filter_by(type_al = data.get('type'),color1 = data.get('color1'),color2 = data.get('color2'),
+            al_thickness = data.get('thickness'),list_length = data.get('length')).first()
+        if makaron is None:
+            makaron = Makaron(
+                type_al = data.get('type'),
+                color1 = data.get('color1'),
+                color2 = data.get('color2'),
+                al_thickness = data.get('thickness'),
+                list_length = data.get('length'),
+                weight = 0
+            )
+            db.session.add(makaron) 
+        makaron.weight += data.get('weight')
+        db.session.commit()
+        return jsonify(msg="Created")
+    else:
+        id = request.args.get('makaron_id')
+        weight = int(request.args.get("weight"))
+        amount = int(request.args.get('amount'))
+        balance_add(amount)
+        makaron = db.get_or_404(Makaron, id)
+        makaron.weight -= weight
+        db.session.commit()
+        return jsonify(msg="Success")
+
 

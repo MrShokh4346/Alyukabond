@@ -487,4 +487,5 @@ class Makaron(db.Model):
     color1 = db.Column(db.String)
     color2 = db.Column(db.String)
     al_thickness = db.Column(db.Float)
-    amount = db.Column(db.Float)
+    list_length = db.Column(db.Float)
+    weight = db.Column(db.Float)

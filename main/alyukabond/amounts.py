@@ -165,6 +165,20 @@ def update_alyukabond_glue(amount1, amount2):
     db.session.commit()
 
 
+# def update_makaron(amount1, amount2):
+#     sticker1 = Makaron.query.filter_by(thickness=amount1.al_thickness, color=amount1.color1, type_aluminy=amount1.type_product).first()
+#     sticker2 = Makaron.query.filter_by(type_al=amount2.type_product, color1=amount2.color1, color2=amount2.color2,
+#             al_thickness=amount2.al_thickness, list_length=amount2.list_length).first()
+#     old_surface = amount1.list_length * amount1.list_width * amount1.quantity
+#     sticker1.surface += old_surface
+#     new_surface = amount2.list_length * amount2.list_width * amount2.quantity
+#     if sticker2 is not None and sticker2.surface > new_surface:
+#         sticker2.surface -= new_surface
+#         db.session.commit()
+#     else:
+#         AssertionError(f"There isn't enaugh {sticker2.type_sticker}  sticker in warehouse")
+
+
 def update_alyukabond_amount(material:Alyukabond=None, type=None, sort=None, color1=None, color2=None, length=None, width=1.22, al_thickness=None, product_thickness=None, quantity=1):
     amount = AlyukabondAmount.query.filter_by(type_product=material.type_product, color1=material.color1, color2=material.color2,
             list_length=material.list_length, al_thickness=material.al_thickness, product_thickness=material.product_thickness).first()
@@ -175,11 +189,11 @@ def update_alyukabond_amount(material:Alyukabond=None, type=None, sort=None, col
         db.session.commit()
     else:
         if amount1 is not None:
+            amount.quantity -= material.quantity
+            amount1.quantity += quantity
             update_alyukabond_aluminy(amount1=amount, amount2=amount1)
             update_alyukabond_sticker(amount1=amount, amount2=amount1)
             update_alyukabond_glue(amount1=amount, amount2=amount1)
-            amount.quantity -= material.quantity
-            amount1.quantity += quantity
             db.session.commit()
         else:
             amount1 = AlyukabondAmount(
@@ -193,11 +207,11 @@ def update_alyukabond_amount(material:Alyukabond=None, type=None, sort=None, col
                 product_thickness = product_thickness,
                 quantity = quantity
             )
+            db.session.add(amount1)
+            amount.quantity -= material.quantity
             update_alyukabond_aluminy(amount1=amount, amount2=amount1)
             update_alyukabond_sticker(amount1=amount, amount2=amount1)
             update_alyukabond_glue(amount1=amount, amount2=amount1)
-            db.session.add(amount1)
-            amount.quantity -= material.quantity
             db.session.commit()
 
 
@@ -232,11 +246,11 @@ def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, yuza=None, ogirli
     return msg
 
 
-def add_makaron(turi, rang1, rang2, al_qal, uzunlik, miqdor):
-    amount = Makaron.query.filter_by(type_al=turi,color1=rang1,color2=rang2,al_thickness=al_qal).first()
-    if not amount:
-        amount = Makaron(type_al=turi,color1=rang1,color2=rang2,al_thickness=al_qal,amount=0)
-        db.session.add(amount)
-        db.session.commit()
-    amount.amount += 16.37 / 3 * (0.02 * uzunlik) * miqdor
-    db.session.commit()
+# def add_makaron(turi, rang1, rang2, al_qal, uzunlik, miqdor):
+#     amount = Makaron.query.filter_by(type_al=turi,color1=rang1,color2=rang2,al_thickness=al_qal).first()
+#     if not amount:
+#         amount = Makaron(type_al=turi,color1=rang1,color2=rang2,al_thickness=al_qal,amount=0)
+#         db.session.add(amount)
+#         db.session.commit()
+#     amount.amount += 16.37 / 3 * (0.02 * uzunlik) * miqdor
+#     db.session.commit()
