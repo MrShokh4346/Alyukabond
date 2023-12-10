@@ -161,6 +161,7 @@ class Aluminy(db.Model):
     debt_s = db.Column(db.Float)
     provider = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
+    payed_debt = db.relationship('PayedDebt',  backref=db.backref('aluminy', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
 
     @validates("type_aluminy")
     def validate_type_aluminy(self, key, type_aluminy):
@@ -182,7 +183,7 @@ class Aluminy(db.Model):
             raise AssertionError("Thickness required")
         return thickness
 
-    total, payed =0, 0
+    total, payed = 0, 0
     @validates("total_price_s")
     def validate_total_pricet_s(self, key, total_price_s):
         global total
@@ -201,6 +202,7 @@ class Aluminy(db.Model):
     
     @validates("debt_s")
     def validate_debt_s(self, key, debt_s):
+        global total, payed
         if debt_s != total - payed:
             raise AssertionError("Sum of debt and payed price are not equal to total sum")
         return debt_s
@@ -233,6 +235,7 @@ class Glue(db.Model):
     debt_s = db.Column(db.Float)
     provider = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
+    payed_debt = db.relationship('PayedDebt',  backref=db.backref('glue', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
 
     total, payed =0, 0
     @validates("total_price_s")
@@ -253,6 +256,7 @@ class Glue(db.Model):
     
     @validates("debt_s")
     def validate_debt_s(self, key, debt_s):
+        global total, payed
         if debt_s != total - payed:
             raise AssertionError("Sum of debt and payed price are not equal to total sum")
         return debt_s
@@ -282,6 +286,7 @@ class Sticker(db.Model):
     debt_s = db.Column(db.Float)
     provider = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
+    payed_debt = db.relationship('PayedDebt',  backref=db.backref('sticker', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
 
     @validates("type_sticker")
     def validate_type_sticker(self, key, type_sticker):
@@ -310,6 +315,7 @@ class Sticker(db.Model):
     
     @validates("debt_s")
     def validate_debt_s(self, key, debt_s):
+        global total, payed
         if debt_s != total - payed:
             raise AssertionError("Sum of debt and payed price are not equal to total sum")
         return debt_s
@@ -366,6 +372,16 @@ class Alyukabond(db.Model):
         return product_thickness
 
 
+class PayedDebt(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    amount = db.Column(db.Float)
+    date = db.Column(db.DateTime, default=datetime.now())
+    saled_id = db.Column(db.Integer, db.ForeignKey("saled_product.id", ondelete='CASCADE'))
+    aluminy_id = db.Column(db.Integer, db.ForeignKey("aluminy.id", ondelete='CASCADE'))
+    glue_id = db.Column(db.Integer, db.ForeignKey("glue.id", ondelete='CASCADE'))
+    sticker_id = db.Column(db.Integer, db.ForeignKey("sticker.id", ondelete='CASCADE'))
+
+
 class AlyukabondAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
@@ -403,6 +419,7 @@ class SaledProduct(db.Model):
     debt_s = db.Column(db.Float)
     date = db.Column(db.DateTime, default=datetime.now())
     products = db.relationship('SelectedProduct',  backref=db.backref('saledproduct', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
+    payed_debt = db.relationship('PayedDebt',  backref=db.backref('saledproduct', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
 
     @validates("agreement_num")
     def validate_agreement_num(self, key, agreement_num):
@@ -429,6 +446,7 @@ class SaledProduct(db.Model):
     
     @validates("debt_s")
     def validate_debt_s(self, key, debt_s):
+        global total, payed
         if debt_s != total - payed:
             raise AssertionError("Sum of debt and payed price are not equal to total sum")
         return debt_s

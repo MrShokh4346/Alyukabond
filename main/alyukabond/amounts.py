@@ -1,4 +1,7 @@
 from main.models import *
+from sqlalchemy import text
+from main.serializers import *
+
 
 def add_aluminy_amount(thickness=None, width=None, color=None, type=None, length=0, roll_weight=0, quantity=1):
     amount = AluminyAmount.query.filter_by(thickness=thickness, color=color, type_aluminy=type).first()
@@ -254,3 +257,24 @@ def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, yuza=None, ogirli
 #         db.session.commit()
 #     amount.amount += 16.37 / 3 * (0.02 * uzunlik) * miqdor
 #     db.session.commit()
+
+
+def filter_amount(name=None, type=None, thickness=None, color1=None, color2=None, from_d=None, to_d=None):
+    t = "type_product" if name=='alyukabond_amount' else f"type_{name.split('_')[0]}"
+    c = "color1" if name=='alyukabond_amount' else "color"
+    thkn = "al_thickness" if name=='alyukabond_amount' else "thickness"
+    query = f"SELECT * FROM {name} WHERE "   # aluminy_amount, glue_amount, sticker_amount, alyukabond_amount
+    query += f"{t}={type} AND" if type is not None else ''
+    query += f" {c}='{color1}' AND" if color1 is not None else ''
+    query += f" color2='{color2}' AND" if color2 is not None else ''
+    query += f" {thkn}={thickness} AND" if thickness is not None else ''
+    query = query[:-4]
+    prds = db.session.execute(text(query)).fetchall()
+    lst = {
+        'aluminy_amount':al_amount_schema.dump(prds),
+        'glue_amount':glue_amount_schemas.dump(prds),
+        'sticker_amount':sticker_amount_schemas.dump(prds),
+        'alyukabond_amount':alyukabond_amount_schema.dump(prds)
+    }.get(name, None)
+    data = {"amount":lst}
+    return data 

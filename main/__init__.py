@@ -7,6 +7,7 @@ from dotenv.main import load_dotenv
 import os
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
+from flask_cors import CORS, cross_origin
 
 
 load_dotenv()
@@ -37,6 +38,7 @@ def create_app():
     app.config["SECRET_KEY"] = os.environ['SECRET_KEY']
     # app.config["CORS_HEADERS"] = "*"
 
+    cors = CORS(app)
 
     db.init_app(app=app)
     ma.init_app(app)
@@ -69,45 +71,45 @@ def create_app():
     with app.app_context():
         db.create_all()
 
-    @app.before_request
-    def option_autoreply():
-        """ Always reply 200 on OPTIONS request """
+    # @app.before_request
+    # def option_autoreply():
+    #     """ Always reply 200 on OPTIONS request """
 
-        if request.method == 'OPTIONS':
-            resp = app.make_default_options_response()
+    #     if request.method == 'OPTIONS':
+    #         resp = app.make_default_options_response()
 
-            headers = None
-            if 'ACCESS_CONTROL_REQUEST_HEADERS' in request.headers:
-                headers = request.headers['ACCESS_CONTROL_REQUEST_HEADERS']
+    #         headers = None
+    #         if 'ACCESS_CONTROL_REQUEST_HEADERS' in request.headers:
+    #             headers = request.headers['ACCESS_CONTROL_REQUEST_HEADERS']
 
-            h = resp.headers
+    #         h = resp.headers
 
-            # Allow the origin which made the XHR
-            h['Access-Control-Allow-Origin'] = request.headers['Origin']
-            # Allow the actual method
-            h['Access-Control-Allow-Methods'] = request.headers['Access-Control-Request-Method']
-            # Allow for 10 seconds
-            h['Access-Control-Max-Age'] = "10"
+    #         # Allow the origin which made the XHR
+    #         h['Access-Control-Allow-Origin'] = request.headers['Origin']
+    #         # Allow the actual method
+    #         h['Access-Control-Allow-Methods'] = request.headers['Access-Control-Request-Method']
+    #         # Allow for 10 seconds
+    #         h['Access-Control-Max-Age'] = "10"
 
-            # We also keep current headers
-            if headers is not None:
-                h['Access-Control-Allow-Headers'] = headers
+    #         # We also keep current headers
+    #         if headers is not None:
+    #             h['Access-Control-Allow-Headers'] = headers
 
-            return resp
-
-
-    @app.after_request
-    def set_allow_origin(resp):
-        """ Set origin for GET, POST, PUT, DELETE requests """
-
-        h = resp.headers
-
-        # Allow crossdomain for other HTTP Verbs
-        if request.method != 'OPTIONS' and 'Origin' in request.headers:
-            h['Access-Control-Allow-Origin'] = request.headers['Origin']
+    #         return resp
 
 
-        return resp
+    # @app.after_request
+    # def set_allow_origin(resp):
+    #     """ Set origin for GET, POST, PUT, DELETE requests """
+
+    #     h = resp.headers
+
+    #     # Allow crossdomain for other HTTP Verbs
+    #     if request.method != 'OPTIONS' and 'Origin' in request.headers:
+    #         h['Access-Control-Allow-Origin'] = request.headers['Origin']
+
+
+    #     return resp
 
 
     return app
