@@ -64,7 +64,10 @@ class GranulaMaterial(db.Model):
     debt = db.Column(db.Float)
     provider = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
-    status = db.Column(db.String) 
+    status = db.Column(db.String)
+    payed_debt = db.relationship('PayedDebt',  backref=db.backref('salafan', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
+
+     
 
     @validates("type_material")
     def validate_type_material(self, key, type_material):
@@ -359,6 +362,7 @@ class Sticker(db.Model):
     def validate_total_pricet_s(self, key, price):
         if not price:
             raise AssertionError("Price required")
+        return price
     
 
 class StickerAmount(db.Model):
@@ -374,7 +378,7 @@ class Alyukabond(db.Model):
     name = db.Column(db.String)
     size = db.Column(db.String)
     type_product = db.Column(db.Integer, nullable=False)
-    sort = db.Column(db.Integer)
+    sort = db.Column(db.String)
     color1_id = db.Column(db.Integer, db.ForeignKey("color.id"))
     color2_id = db.Column(db.Integer, db.ForeignKey("color.id"))
     color1 = db.relationship('Color', foreign_keys=[color1_id])
@@ -416,9 +420,11 @@ class Alyukabond(db.Model):
 
 class PayedDebt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    amount = db.Column(db.Float)
+    amount_d = db.Column(db.Float)
+    amount_s = db.Column(db.Float)
     user = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
+    salafan_id = db.Column(db.Integer, db.ForeignKey("granula_material.id", ondelete='CASCADE'))
     saled_id = db.Column(db.Integer, db.ForeignKey("saled_product.id", ondelete='CASCADE'))
     aluminy_nakladnoy_id = db.Column(db.Integer, db.ForeignKey("aluminy_nakladnoy.id", ondelete='CASCADE'))
     glue_id = db.Column(db.Integer, db.ForeignKey("glue.id", ondelete='CASCADE'))
@@ -540,7 +546,8 @@ class WriteTransaction(db.Model):
     user = db.Column(db.String)
     status = db.Column(db.String)
     description = db.Column(db.String)
-    amount = db.Column(db.Float)
+    amount_s = db.Column(db.Float)
+    amount_d = db.Column(db.Float)
     date = db.Column(db.DateTime, default=datetime.now())
 
     @validates('user')

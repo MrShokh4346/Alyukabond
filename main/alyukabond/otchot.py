@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from main.alyukabond import bp
 from main.models import *
 from main import jwt
@@ -21,7 +21,7 @@ def salafan_rasxod(frm, to):
     granula = granula[0][0] if granula[0][0] else 1 
     avg_narx = material[0][0] if material[0][0] else 0 
     salafan_narx = salafan*avg_narx if salafan else 0
-    grn_price_per_kg = (rasxod + salafan*salafan_narx) / granula
+    grn_price_per_kg = (rasxod + salafan_narx) / granula
     return grn_price_per_kg
 
 
@@ -37,18 +37,21 @@ def alyukabond_price():
     thkn = float(request.args.get('al_thickness', 0))
     typ = int(request.args.get('type', 0))
     grn_price = salafan_rasxod(frm=d, to=s)
+    rate = ExchangeRate.query.order_by(ExchangeRate.date.desc()).first()
     alyukabond_quantity = Alyukabond.query.with_entities(func.sum(Alyukabond.quantity)).filter(Alyukabond.date.between(d, s), 
         Alyukabond.color1_id==color1, Alyukabond.color2_id==color2, Alyukabond.al_thickness==thkn, Alyukabond.type_product==typ).all()
     aluminy_color1 = Aluminy.query.filter_by(color_id=color1, thickness=thkn).order_by(Aluminy.date.desc()).first()
     aluminy_color2 = Aluminy.query.filter_by(color_id=color2, thickness=thkn).order_by(Aluminy.date.desc()).first()
     glue = Glue.query.order_by(Glue.date.desc()).first()
     sticker = Sticker.query.filter(Sticker.type_sticker==typ).order_by(Sticker.date.desc()).first()
-    al1 = 1.4 * aluminy_color1.price_per_kg
-    al2 = 1.4 * aluminy_color2.price_per_kg
-    gl = 0.27 * glue.price_per_kg
-    st = 3 * sticker.price_per_surface
-    grn = 10.3 * grn_price
-    rasxod = (al1 + al2 + gl + st + grn) * alyukabond_quantity[0][0]
+    exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.status!='salafan', Expence.date.between(d, s)).all()
+    r = exp[0][0] / rate.rate if exp[0][0] else 0
+    al1 = 1.4 * aluminy_color1.price_per_kg if aluminy_color1 else 0
+    al2 = 1.4 * aluminy_color2.price_per_kg if aluminy_color2 else 0
+    gl = 0.27 * glue.price_per_kg if glue else 0
+    st = 3 * sticker.price_per_surface if sticker else 0
+    grn = 10.3 * (grn_price / rate.rate)
+    rasxod = (al1 + al2 + gl + st + grn) * alyukabond_quantity[0][0] + r
     return jsonify({"rasxod":rasxod})
 
 
@@ -149,55 +152,70 @@ def report_debt():
             id = request.args.get('id')
             name = request.args.get('name')
             data = request.get_json()
-            obj = {
+            material = {
                 "aluminy":AluminyNakladnoy.query.get(id),
                 "sticker":StickerNakladnoy.query.get(id),
                 "glue":Glue.query.get(id),
                 "salafan":GranulaMaterial.query.get(id)
             }.get(name, None)
-            if name != 'salafan':
-                extra_sum = data.get("payed_price_s") - obj.payed_price_s
-                obj.partiya = data.get("partiya")
-                obj.total_price_d = data.get("total_price_d")
-                obj.total_price_s = data.get("total_price_s")
-                obj.payed_price_d = data.get("payed_price_d")
-                obj.payed_price_s = data.get("payed_price_s")
-                obj.debt_d = data.get("debt_d")
-                obj.debt_s = data.get("debt_s")
-                obj.provider = data.get("provider")
-            else:
-                extra_sum = data.get("payed_price") - obj.payed_price
-                obj.total_price = data.get("total_price")
-                obj.payed_price = data.get("payed_price")
-                obj.debt = data.get("debt")
-                obj.provider = data.get("provider")
-            if extra_sum != 0:
+            debt = material.debt_s if name != 'salafan' else material.debt
+            if debt >= data.get('amount_s'):
+                if name != 'salafan':
+                    material.total_price_s = material.total_price_s
+                    material.total_price_d = material.total_price_d
+                    material.payed_price_d += data.get('amount_d')
+                    material.payed_price_s += data.get('amount_s')
+                    material.debt_d -= data.get('amount_d')
+                    material.debt_s -= data.get('amount_s')
+                else:
+                    material.total_price = material.total_price
+                    material.payed_price += data.get('amount_s')
+                    material.debt -= data.get('amount_s') 
                 payed = {
-                    'aluminy':PayedDebt(amount=extra_sum, user=data.get('user'), aluminy_nakladnoy_id = obj.id),
-                    'glue':PayedDebt(amount=extra_sum, user=data.get('user'), glue_id = obj.id),
-                    'sticker':PayedDebt(amount=extra_sum, user=data.get('user'), sticker_nakladnoy_id = obj.id),
-                    'alyukabond':PayedDebt(amount=extra_sum, user=data.get('user'), saled_id = obj.id)
+                    'aluminy':PayedDebt(amount_d=data.get('amount_d'), amount_s=data.get('amount_s'), user=data.get('user'), aluminy_nakladnoy_id = material.id),
+                    'glue':PayedDebt(amount_d=data.get('amount_d'), amount_s=data.get('amount_s'), user=data.get('user'), glue_id = material.id),
+                    'sticker':PayedDebt(amount_d=data.get('amount_d'), amount_s=data.get('amount_s'), user=data.get('user'), sticker_nakladnoy_id = material.id),
+                    'salafan':PayedDebt(amount_s=data.get('amount_s'), user=data.get('user'), salafan_id = material.id)
                 }.get(name, None)
                 db.session.add(payed)
-                balance_minus(extra_sum)
-            db.session.commit()
-            return jsonify(msg="Success")
+                db.session.commit()
+                balance_minus(data.get('amount_s'))
+                return jsonify(msg="Success")
+            return jsonify(msg="You are entered more then debt")
     else:
         return jsonify(msg="You have not authority to this action"), 401
 
 
 # Haqlar xisobot
-@bp.route('/report/fee')
+@bp.route('/report/fee', methods=['GET', 'POST'])
 @jwt_required()
 def report_fee():
     user = db.get_or_404(Users, get_jwt_identity())
     if user.role == 'a':
-        from_d = request.args.get('from').split('-')
-        to_d = request.args.get('to').split('-')
-        d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
-        s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
-        alyukabond = SaledProduct.query.filter(SaledProduct.date.between(d, s)).all()
-        return jsonify(saled_product_schema.dump(alyukabond))
+        if request.method == 'GET':
+            from_d = request.args.get('from').split('-')
+            to_d = request.args.get('to').split('-')
+            d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+            s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+            alyukabond = SaledProduct.query.filter(SaledProduct.date.between(d, s)).all()
+            return jsonify(saled_product_schema.dump(alyukabond))
+        elif request.method == 'POST':
+            id = request.args.get('id')
+            data = request.get_json()
+            obj = SaledProduct.query.get(id)
+            if obj.debt_s >= data.get('amount_s'):
+                obj.total_price_s = obj.total_price_s
+                obj.total_price_d = obj.total_price_d
+                obj.payed_price_d += data.get('amount_d')
+                obj.payed_price_s += data.get('amount_s')
+                obj.debt_d -= data.get('amount_d')
+                obj.debt_s -= data.get('amount_s')
+                payed = PayedDebt(amount_d=data.get('amount_d'), amount_s=data.get('amount_s'), user=data.get('user'), saled_id = obj.id)
+                db.session.add(payed)
+                db.session.commit()
+                balance_add(data.get('amount_s'))
+                return jsonify(msg="Success")
+            return jsonify(msg="You are entered more then debt")
     else:
         return jsonify(msg="You have not authority to this action"), 401
 
@@ -256,24 +274,26 @@ def transaction():
             data = request.get_json()
             if data['status'] == 'add':
                 write = WriteTransaction(
-                        amount=data.get('amount'),
-                        user = user.username,
+                        amount_s=data.get('amount_s'),
+                        amount_d=data.get('amount_d'),
+                        user = data.get('user'),
                         description = data.get('description'),
                         status = data.get('status')
                         )
                 db.session.add(write)
                 db.session.commit()
-                balance_add(data.get("amount"))
+                balance_add(data.get("amount_s"))
             else:
                 write = WriteTransaction(
-                        amount=data.get('amount'),
-                        user = user.username,
+                        amount_s=data.get('amount_s'),
+                        amount_d=data.get('amount_d'),
+                        user = data.get('user'),
                         description = data.get('description'),
                         status = data.get('status')
                         )
                 db.session.add(write)
                 db.session.commit()
-                balance_minus(data.get("amount"))
+                balance_minus(data.get("amount_s"))
             return jsonify(msg='Success')
         else:
             id = request.args.get("transaction_id", None)

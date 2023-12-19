@@ -188,6 +188,7 @@ def expence():
         exp = Expence(
             description = request.get_json().get('description'),
             user = request.get_json().get('user'),
+            status = request.get_json().get('status'),
             price = request.get_json().get('price')
         )
         db.session.add(exp)
@@ -215,20 +216,25 @@ def warehouse():
 def make_granula():
     if request.method == 'POST':
         data = request.get_json()
-        granula = GranulaPoteriya(
-            material_weight = data.get("material_weight"),
-            granula_weight = data.get("granula_weight"),
-            provider = data.get('provider'),
-            poteriya = data.get("material_weight") - data.get("granula_weight")
-        )
-        db.session.add(granula)
-        amount = GranulaAmount.query.filter_by(sklad=False).first()
-        if not amount:
-            amount = GranulaAmount(weight=0)
-            db.session.add(amount)
-        amount.weight += data.get("granula_weight")
-        db.session.commit()
-        return jsonify(msg="Success")
+        material = MaterialAmount.query.filter_by(index1=True).first()
+        if material.amount > data.get("material_weight"):
+            material.amount -= data.get("material_weight")
+            granula = GranulaPoteriya(
+                material_weight = data.get("material_weight"),
+                granula_weight = data.get("granula_weight"),
+                provider = data.get('provider'),
+                poteriya = data.get("material_weight") - data.get("granula_weight")
+            )
+            db.session.add(granula)
+            amount = GranulaAmount.query.filter_by(sklad=False).first()
+            if not amount:
+                amount = GranulaAmount(weight=0)
+                db.session.add(amount)
+            amount.weight += data.get("granula_weight")
+            db.session.commit()
+            return jsonify(msg="Success")
+        else:
+            return jsonify(msg="There isn't enough material in warehouse")
     else:
         data = {
             'poteriya':gr_sklad_schema.dump(GranulaPoteriya.query.all()),

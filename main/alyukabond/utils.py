@@ -220,15 +220,19 @@ def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, yuza=None, ogirli
         aluminy2 = AluminyAmount.query.filter_by(color_id=rangi2, thickness=qalinligi).first() if obj == 'alyuminy' else None
         if amount is not None and aluminy2 is not None and aluminy2.surface > yuza * miqdor:
             aluminy2.surface -= yuza * miqdor
-            amount.weight -= ogirlik[obj] * miqdor
+            aluminy2.weight -= ogirlik[obj] * miqdor
         elif aluminy2 is None and obj == 'alyuminy':
             raise AssertionError(f"There isn't enaugh {rangi2} aluminy in warehouse")
 
         if amount is not None:
             if amount.surface and (amount.surface > yuza * miqdor) if obj!="granula" else False:
                 amount.surface -= yuza * miqdor 
+            else:
+                raise AssertionError(f"There isn't enaugh {rangi1 if obj=='alyuminy' else ''} {obj} in warehouse")
             if amount.weight and (amount.weight > ogirlik[obj] * miqdor) if obj!="sticker" else False:
                 amount.weight -= ogirlik[obj] * miqdor
+            else:
+                raise AssertionError(f"There isn't enaugh {rangi1 if obj=='alyuminy' else ''} {obj} in warehouse")
             msg="success"
             
         else:

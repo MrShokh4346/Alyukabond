@@ -21,6 +21,14 @@ color_schema = ColorSerializer()
 colors_schema = ColorSerializer(many=True)
 
 
+class PayedDebtSerializer(Schema):
+    id = fields.Integer(dump_only=True)
+    amount_s = fields.Float(required=True)
+    amount_d = fields.Float(required=True)
+    user = fields.String()
+    date = fields.DateTime(format='%Y-%m-%d %X')
+
+
 class GranulaMaterialSerializer(Schema):
     id = fields.Integer(dump_only=True)
     name = fields.String(required=True)
@@ -33,6 +41,7 @@ class GranulaMaterialSerializer(Schema):
     payed_price = fields.Float(required=True)
     debt = fields.Float(required=True)
     provider = fields.String(required=True)
+    payed_debt = fields.Nested(PayedDebtSerializer, many=True, dump_only=True)
     date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 material_schemas = GranulaMaterialSerializer(many=True)
@@ -48,13 +57,6 @@ class SetkaSerializer(Schema):
     date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 setka_schemas = SetkaSerializer(many=True)
-
-
-class PayedDebtSerializer(Schema):
-    id = fields.Integer(dump_only=True)
-    amount = fields.Float(required=True)
-    user = fields.Float()
-    date = fields.DateTime(format='%Y-%m-%d %X')
 
 
 class AluminySerializer(Schema):
@@ -213,6 +215,7 @@ client_schema = ClientSerializer(many=True)
 
 class ExpenceSerializer(Schema):
     id = fields.Integer(dump_only=True)
+    status = fields.String()
     discription = fields.String(required=True)
     user = fields.String(required=True)
     price = fields.Float(required=True)
@@ -308,7 +311,8 @@ class WriteTransactionSerializer(Schema):
     id = fields.Integer(dump_only=True)
     user = fields.String(required=True)
     status = fields.String(required=True)
-    amount = fields.Integer(required=True)
+    amount_s = fields.Integer(required=True)
+    amount_d = fields.Integer(required=True)
     date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 transaction_schemas = WriteTransactionSerializer(many=True)
