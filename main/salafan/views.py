@@ -140,6 +140,47 @@ def report():
     return jsonify(msg="You are not admin"), 401
 
 
+# client
+@bp.route('/client', methods=['POST', 'GET'])
+def client():
+    if request.method=='GET':
+        cilent = Client.query.all()
+        return jsonify(client_schema.dump(cilent))
+    else:
+        data = request.get_json()
+        cilent = Client(user=data.get('user'))
+        db.session.add(cilent)
+        db.session.commit()
+        return jsonify(msg="Success")
+
+
+# rasxod maqsad
+@bp.route('/expence-intent', methods=['POST', 'GET'])
+def expence_intent():
+    if request.method=='GET':
+        exp_intent = ExpenceIntent.query.all()
+        return jsonify(expence_intent_schema.dump(exp_intent))
+    else:
+        data = request.get_json()
+        intent = ExpenceIntent(description=data.get('description'))
+        db.session.add(intent)
+        db.session.commit()
+        return jsonify(msg="Success")
+
+
+# rasxod user
+@bp.route('/expence-user', methods=['POST', 'GET'])
+def expence_user():
+    if request.method == 'GET':
+        exp_user = ExpenceUser.query.all()
+        return jsonify(expence_user_schema.dump(exp_user))
+    else:
+        data = request.get_json()
+        user = ExpenceUser(user=data.get('user'))
+        db.session.add(user)
+        db.session.commit()
+        return jsonify(msg="Success")
+
 # rasxod
 @bp.route('/expence', methods=['POST', 'GET'])
 def expence():
@@ -190,7 +231,7 @@ def make_granula():
         return jsonify(msg="Success")
     else:
         data = {
-            'granulas':gr_sklad_schema.dump(GranulaPoteriya.query.all()),
+            'poteriya':gr_sklad_schema.dump(GranulaPoteriya.query.all()),
             'amount':gr_amount_schema.dump(GranulaAmount.query.filter_by(sklad=False).first())
         }
         return jsonify(data)

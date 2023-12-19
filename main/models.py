@@ -142,46 +142,28 @@ class Setka(db.Model):
     date = db.Column(db.DateTime, default=datetime.now())
 
 
-class Aluminy(db.Model): 
+class Color(db.Model):
+    __tablename__ = 'color'
     id = db.Column(db.Integer, primary_key=True)
-    type_aluminy = db.Column(db.Integer, nullable=False)
-    color = db.Column(db.String, default=None)
-    thickness = db.Column(db.Float, nullable=False)
-    list_width = db.Column(db.Float, default=1.22)
-    list_length = db.Column(db.Float, default=0)
-    roll_weight = db.Column(db.Float, default=0)
-    price_per_kg = db.Column(db.Float)
+    name = db.Column(db.String)
+    aluminy = db.relationship('Aluminy', back_populates='color')
+    aluminyamount = db.relationship('AluminyAmount', back_populates='color')
+
+
+class AluminyNakladnoy(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    partiya = db.Column(db.Integer)
+    total_weight = db.Column(db.Float)  
     total_price_d = db.Column(db.Float)  
-    quantity = db.Column(db.Integer, nullable=False)
     total_price_s = db.Column(db.Float)  
-    surface = db.Column(db.Float)  
     payed_price_d = db.Column(db.Float)
     payed_price_s = db.Column(db.Float)
     debt_d = db.Column(db.Float)
     debt_s = db.Column(db.Float)
     provider = db.Column(db.String)
+    aluminy = db.relationship('Aluminy', back_populates='nakladnoy')
     date = db.Column(db.DateTime, default=datetime.now())
-    payed_debt = db.relationship('PayedDebt',  backref=db.backref('aluminy', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
-
-    @validates("type_aluminy")
-    def validate_type_aluminy(self, key, type_aluminy):
-        if not type_aluminy:
-            raise AssertionError("Type aluminy required")
-        if type_aluminy not in [100, 150, 450]:
-            raise AssertionError('Type aluminy shoude be (100/150/450)')
-        return type_aluminy
-        
-    @validates("color")
-    def validate_type_aluminy(self, key, color):
-        if not color:
-            raise AssertionError("Color required")
-        return color
-        
-    @validates("thickness")
-    def validate_thickness(self, key, thickness):
-        if not thickness:
-            raise AssertionError("Thickness required")
-        return thickness
+    payed_debt = db.relationship('PayedDebt',  backref=db.backref('aluminy_nakladnoy', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
 
     total, payed = 0, 0
     @validates("total_price_s")
@@ -208,10 +190,45 @@ class Aluminy(db.Model):
         return debt_s
 
 
+class Aluminy(db.Model): 
+    id = db.Column(db.Integer, primary_key=True)
+    color_id = db.Column(db.Integer, db.ForeignKey("color.id"))
+    color = db.relationship('Color', back_populates='aluminy', lazy=True)
+    nakladnoy = db.relationship('AluminyNakladnoy', back_populates='aluminy', lazy=True)
+    nakladnoy_id = db.Column(db.Integer, db.ForeignKey("aluminy_nakladnoy.id"))
+    thickness = db.Column(db.Float, nullable=False)
+    list_width = db.Column(db.Float, default=1.22)
+    list_length = db.Column(db.Float, default=0)
+    roll_weight = db.Column(db.Float, default=0)
+    price_per_kg = db.Column(db.Float)
+    price = db.Column(db.Float)
+    partiya = db.Column(db.Integer)
+    date = db.Column(db.DateTime)
+    quantity = db.Column(db.Integer, nullable=False)
+
+    @validates("price_per_kg")
+    def validate_price_per_kg(self, key, price):
+        if not price:
+            raise AssertionError("Price required")
+        return price
+        
+    @validates("color_id")
+    def validate_type_aluminy(self, key, color):
+        if not color:
+            raise AssertionError("Color required")
+        return color
+        
+    @validates("thickness")
+    def validate_thickness(self, key, thickness):
+        if not thickness:
+            raise AssertionError("Thickness required")
+        return thickness
+
+
 class AluminyAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    type_aluminy = db.Column(db.Integer, nullable=False)
-    color = db.Column(db.String, default=None)
+    color_id = db.Column(db.Integer, db.ForeignKey("color.id"))
+    color = db.relationship('Color',   back_populates='aluminyamount', lazy=True)
     thickness = db.Column(db.Float, nullable=False)
     width = db.Column(db.Float, default=1.22)  # m
     surface = db.Column(db.Float)
@@ -236,6 +253,12 @@ class Glue(db.Model):
     provider = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
     payed_debt = db.relationship('PayedDebt',  backref=db.backref('glue', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
+
+    @validates("thickness")
+    def validate_thickness(self, key, thickness):
+        if not thickness:
+            raise AssertionError("Thickness required")
+        return thickness
 
     total, payed =0, 0
     @validates("total_price_s")
@@ -271,13 +294,9 @@ class GlueAmount(db.Model):
     index1 = db.Column(db.Boolean, default=True)
 
 
-class Sticker(db.Model):
+class StickerNakladnoy(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    type_sticker = db.Column(db.Integer, nullable=False)
-    width = db.Column(db.Float, default=1.22)
-    quantity = db.Column(db.Integer)
-    length = db.Column(db.Float)
-    surface = db.Column(db.Float)
+    partiya = db.Column(db.Integer)
     total_price_d = db.Column(db.Float)  
     total_price_s = db.Column(db.Float)  
     payed_price_d = db.Column(db.Float)
@@ -285,18 +304,11 @@ class Sticker(db.Model):
     debt_d = db.Column(db.Float)
     debt_s = db.Column(db.Float)
     provider = db.Column(db.String)
+    sticker = db.relationship('Sticker', back_populates='nakladnoy')
     date = db.Column(db.DateTime, default=datetime.now())
-    payed_debt = db.relationship('PayedDebt',  backref=db.backref('sticker', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
+    payed_debt = db.relationship('PayedDebt',  backref=db.backref('sticker_nakladnoy', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
 
-    @validates("type_sticker")
-    def validate_type_sticker(self, key, type_sticker):
-        if not type_sticker:
-            raise AssertionError("Type sticker required")
-        if type_sticker not in [100, 150, 450]:
-            raise AssertionError('Type sticker type shoude be (100/150/450)')
-        return type_sticker
-    
-    total, payed =0, 0
+    total, payed = 0, 0
     @validates("total_price_s")
     def validate_total_pricet_s(self, key, total_price_s):
         global total
@@ -321,22 +333,52 @@ class Sticker(db.Model):
         return debt_s
 
 
+class Sticker(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    type_sticker = db.Column(db.Integer, nullable=False)
+    width = db.Column(db.Float, default=1.22)
+    quantity = db.Column(db.Integer)
+    length = db.Column(db.Float)
+    surface = db.Column(db.Float)
+    price_per_surface = db.Column(db.Float)
+    price = db.Column(db.Float)
+    partiya = db.Column(db.Integer)
+    date = db.Column(db.DateTime)
+    nakladnoy = db.relationship('StickerNakladnoy', back_populates='sticker', lazy=True)
+    nakladnoy_id = db.Column(db.Integer, db.ForeignKey("sticker_nakladnoy.id"))
+
+    @validates("type_sticker")
+    def validate_type_sticker(self, key, type_sticker):
+        if not type_sticker:
+            raise AssertionError("Type sticker required")
+        if type_sticker not in [100, 150, 450]:
+            raise AssertionError('Type sticker type shoude be (100/150/450)')
+        return type_sticker
+    
+    @validates("price_per_surface")
+    def validate_total_pricet_s(self, key, price):
+        if not price:
+            raise AssertionError("Price required")
+    
+
 class StickerAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type_sticker = db.Column(db.Integer)
     width = db.Column(db.Float, default=1.22)
     surface = db.Column(db.Float)
-    thickness = db.Column(db.Float)
 
 
 class Alyukabond(db.Model):
+    __tablename__ = 'alyukabond'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     size = db.Column(db.String)
     type_product = db.Column(db.Integer, nullable=False)
     sort = db.Column(db.Integer)
-    color1 = db.Column(db.String, nullable=False)
-    color2 = db.Column(db.String, default=None)
+    color1_id = db.Column(db.Integer, db.ForeignKey("color.id"))
+    color2_id = db.Column(db.Integer, db.ForeignKey("color.id"))
+    color1 = db.relationship('Color', foreign_keys=[color1_id])
+    color2 = db.relationship('Color', foreign_keys=[color2_id])
     list_length = db.Column(db.Float)
     list_width = db.Column(db.Float, default=1.22)
     al_thickness = db.Column(db.Float, nullable=False)
@@ -375,21 +417,25 @@ class Alyukabond(db.Model):
 class PayedDebt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Float)
+    user = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
     saled_id = db.Column(db.Integer, db.ForeignKey("saled_product.id", ondelete='CASCADE'))
-    aluminy_id = db.Column(db.Integer, db.ForeignKey("aluminy.id", ondelete='CASCADE'))
+    aluminy_nakladnoy_id = db.Column(db.Integer, db.ForeignKey("aluminy_nakladnoy.id", ondelete='CASCADE'))
     glue_id = db.Column(db.Integer, db.ForeignKey("glue.id", ondelete='CASCADE'))
-    sticker_id = db.Column(db.Integer, db.ForeignKey("sticker.id", ondelete='CASCADE'))
+    sticker_nakladnoy_id = db.Column(db.Integer, db.ForeignKey("sticker_nakladnoy.id", ondelete='CASCADE'))
 
 
 class AlyukabondAmount(db.Model):
+    __tablename__ = 'alyukabond_amount'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     size = db.Column(db.String)
     type_product = db.Column(db.Integer, nullable=False)
     sort = db.Column(db.String)
-    color1 = db.Column(db.String, nullable=False)
-    color2 = db.Column(db.String)
+    color1_id = db.Column(db.Integer, db.ForeignKey("color.id"))
+    color2_id = db.Column(db.Integer, db.ForeignKey("color.id"))
+    color1 = db.relationship('Color', foreign_keys=[color1_id])
+    color2 = db.relationship('Color', foreign_keys=[color2_id])
     list_length = db.Column(db.Float)
     list_width = db.Column(db.Float, default=1.22)
     al_thickness = db.Column(db.Float)
@@ -452,8 +498,24 @@ class SaledProduct(db.Model):
         return debt_s
 
 
+class Client(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user = db.Column(db.String)
+
+    
+class ExpenceIntent(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    description = db.Column(db.String)
+
+
+class ExpenceUser(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user = db.Column(db.String)
+
+
 class Expence(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    status = db.Column(db.String)
     user = db.Column(db.String)
     description = db.Column(db.String)
     price = db.Column(db.Float)
@@ -464,10 +526,12 @@ class Expence(db.Model):
         if not user:
             raise AssertionError('User required')
         return user
+    
 
 class Balance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Float)
+    valuta = db.Column(db.String)
     index1 = db.Column(db.Boolean, default=True)
 
 
@@ -501,7 +565,6 @@ class BlacklistToken(db.Model):
 
 class Makaron(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    type_al = db.Column(db.Integer)
     color1 = db.Column(db.String)
     color2 = db.Column(db.String)
     al_thickness = db.Column(db.Float)

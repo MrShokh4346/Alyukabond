@@ -1,0 +1,325 @@
+from datetime import datetime, timedelta
+from main.alyukabond import bp
+from main.models import *
+from main import jwt
+from flask_jwt_extended import get_jwt_identity, jwt_required
+from main.serializers import *
+from sqlalchemy.sql import func
+from flask import  send_from_directory, jsonify, request
+from openpyxl import Workbook, load_workbook
+import shutil
+from .utils import *
+from .balance import *
+
+def salafan_rasxod(frm, to):
+    d = to - timedelta(days=30)
+    material = GranulaMaterial.query.with_entities(func.avg(GranulaMaterial.price_per_kg)).filter(GranulaMaterial.date.between(d, to)).all()
+    granula = GranulaPoteriya.query.with_entities(func.sum(GranulaPoteriya.granula_weight), func.sum(GranulaPoteriya.material_weight)).filter(GranulaPoteriya.date.between(frm, to)).all()
+    exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.status=='salafan', Expence.date.between(frm, to)).all()
+    rasxod = exp[0][0] if exp[0][0] else 0
+    salafan = granula[0][1] if granula[0][1] else 0 
+    granula = granula[0][0] if granula[0][0] else 1 
+    avg_narx = material[0][0] if material[0][0] else 0 
+    salafan_narx = salafan*avg_narx if salafan else 0
+    grn_price_per_kg = (rasxod + salafan*salafan_narx) / granula
+    return grn_price_per_kg
+
+
+# sebestoymost
+@bp.route('/price')
+def alyukabond_price():
+    from_d = request.args.get('from').split('-')
+    to_d = request.args.get('to').split('-')
+    d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+    s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+    color1 = request.args.get('color1')
+    color2 = request.args.get('color2')
+    thkn = float(request.args.get('al_thickness', 0))
+    typ = int(request.args.get('type', 0))
+    grn_price = salafan_rasxod(frm=d, to=s)
+    alyukabond_quantity = Alyukabond.query.with_entities(func.sum(Alyukabond.quantity)).filter(Alyukabond.date.between(d, s), 
+        Alyukabond.color1_id==color1, Alyukabond.color2_id==color2, Alyukabond.al_thickness==thkn, Alyukabond.type_product==typ).all()
+    aluminy_color1 = Aluminy.query.filter_by(color_id=color1, thickness=thkn).order_by(Aluminy.date.desc()).first()
+    aluminy_color2 = Aluminy.query.filter_by(color_id=color2, thickness=thkn).order_by(Aluminy.date.desc()).first()
+    glue = Glue.query.order_by(Glue.date.desc()).first()
+    sticker = Sticker.query.filter(Sticker.type_sticker==typ).order_by(Sticker.date.desc()).first()
+    al1 = 1.4 * aluminy_color1.price_per_kg
+    al2 = 1.4 * aluminy_color2.price_per_kg
+    gl = 0.27 * glue.price_per_kg
+    st = 3 * sticker.price_per_surface
+    grn = 10.3 * grn_price
+    rasxod = (al1 + al2 + gl + st + grn) * alyukabond_quantity[0][0]
+    return jsonify({"rasxod":rasxod})
+
+
+# xisobot sotib olingan
+@bp.route('/report/purchase')
+@jwt_required()
+def report():
+    user = db.get_or_404(Users, get_jwt_identity())
+    if user.role == 'a':
+        from_d = request.args.get('from').split('-')
+        to_d = request.args.get('to').split('-')
+        fr = request.args.get('filter', None)
+        d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+        s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+        if fr is None:
+            aluminy = Aluminy.query.filter(Aluminy.date.between(d, s)).all()
+            glue = Glue.query.filter(Glue.date.between(d, s)).all()
+            sticker = Sticker.query.filter(Sticker.date.between(d, s)).all()
+            salafan = GranulaMaterial.query.filter(GranulaMaterial.date.between(d, s)).all()
+            data = {
+                "aluminy":aluminy_schemas.dump(aluminy),
+                "glue":glue_schemas.dump(glue),
+                "sticker":sticker_schemas.dump(sticker),
+                "salafan":salafan_schema.dump(salafan)
+            }
+        else:
+            objects = {
+                "aluminy":aluminy_schemas.dump(Aluminy.query.filter(Aluminy.date.between(d, s)).all()),
+                "glue":glue_schemas.dump(Glue.query.filter(Glue.date.between(d, s)).all()),
+                "sticker":sticker_schemas.dump(Sticker.query.filter(Sticker.date.between(d, s)).all()),
+                "salafan":salafan_schema.dump(GranulaMaterial.query.filter(GranulaMaterial.date.between(d, s)).all())
+            }.get(fr, None)
+            data = {f"{fr}":objects}
+        return jsonify(data)
+    else:
+        return jsonify(msg="You have not authority to this action"), 401
+
+
+# Mahsulot xisobot
+@bp.route('/report/product')
+@jwt_required()
+def report_product():
+    user = db.get_or_404(Users, get_jwt_identity())
+    if user.role == 'a':
+        from_d = request.args.get('from').split('-')
+        to_d = request.args.get('to').split('-')
+        d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+        s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+        alyukabond = Alyukabond.query.filter(Alyukabond.date.between(d, s)).all()
+        return jsonify(alyukabond_schemas.dump(alyukabond))
+    else:
+        return jsonify(msg="You have not authority to this action"), 401
+
+
+# Sotilgan tovar xisobot
+@bp.route('/report/saled')
+@jwt_required()
+def report_saled():
+    user = db.get_or_404(Users, get_jwt_identity())
+    if user.role == 'a':
+        from_d = request.args.get('from').split('-')
+        to_d = request.args.get('to').split('-')
+        d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+        s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+        saled = SaledProduct.query.filter(Alyukabond.date.between(d, s)).all()
+        data = {
+            "saled":saled_product_schema.dump(saled)
+        }
+        return jsonify(data)
+    else:
+        return jsonify(msg="You have not authority to this action"), 401
+
+
+# Qarzlar xisobot
+@bp.route('/report/debt', methods=['GET', 'POST'])
+@jwt_required()
+def report_debt():
+    user = db.get_or_404(Users, get_jwt_identity())
+    if user.role == 'a':
+        if request.method == 'GET':
+            from_d = request.args.get('from').split('-')
+            to_d = request.args.get('to').split('-')
+            fr = request.args.get('filter', None)
+            d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+            s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+            aluminy = AluminyNakladnoy.query.filter(AluminyNakladnoy.date.between(d, s)).all()
+            glue = Glue.query.filter(Glue.date.between(d, s)).all()
+            sticker = StickerNakladnoy.query.filter(StickerNakladnoy.date.between(d, s)).all()
+            salafan = GranulaMaterial.query.filter(GranulaMaterial.date.between(d, s)).all()
+            data = {
+                "aluminy":aluminy_nakladnoy_schema.dump(aluminy),
+                "sticker":sticker_nakladnoy_schema.dump(sticker),
+                "glue":glue_schemas.dump(glue),
+                "salafan":salafan_schema.dump(salafan)
+            }.get(fr, None)
+            return jsonify(data)
+        elif request.method == 'POST':
+            id = request.args.get('id')
+            name = request.args.get('name')
+            data = request.get_json()
+            obj = {
+                "aluminy":AluminyNakladnoy.query.get(id),
+                "sticker":StickerNakladnoy.query.get(id),
+                "glue":Glue.query.get(id),
+                "salafan":GranulaMaterial.query.get(id)
+            }.get(name, None)
+            if name != 'salafan':
+                extra_sum = data.get("payed_price_s") - obj.payed_price_s
+                obj.partiya = data.get("partiya")
+                obj.total_price_d = data.get("total_price_d")
+                obj.total_price_s = data.get("total_price_s")
+                obj.payed_price_d = data.get("payed_price_d")
+                obj.payed_price_s = data.get("payed_price_s")
+                obj.debt_d = data.get("debt_d")
+                obj.debt_s = data.get("debt_s")
+                obj.provider = data.get("provider")
+            else:
+                extra_sum = data.get("payed_price") - obj.payed_price
+                obj.total_price = data.get("total_price")
+                obj.payed_price = data.get("payed_price")
+                obj.debt = data.get("debt")
+                obj.provider = data.get("provider")
+            if extra_sum != 0:
+                payed = {
+                    'aluminy':PayedDebt(amount=extra_sum, user=data.get('user'), aluminy_nakladnoy_id = obj.id),
+                    'glue':PayedDebt(amount=extra_sum, user=data.get('user'), glue_id = obj.id),
+                    'sticker':PayedDebt(amount=extra_sum, user=data.get('user'), sticker_nakladnoy_id = obj.id),
+                    'alyukabond':PayedDebt(amount=extra_sum, user=data.get('user'), saled_id = obj.id)
+                }.get(name, None)
+                db.session.add(payed)
+                balance_minus(extra_sum)
+            db.session.commit()
+            return jsonify(msg="Success")
+    else:
+        return jsonify(msg="You have not authority to this action"), 401
+
+
+# Haqlar xisobot
+@bp.route('/report/fee')
+@jwt_required()
+def report_fee():
+    user = db.get_or_404(Users, get_jwt_identity())
+    if user.role == 'a':
+        from_d = request.args.get('from').split('-')
+        to_d = request.args.get('to').split('-')
+        d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+        s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+        alyukabond = SaledProduct.query.filter(SaledProduct.date.between(d, s)).all()
+        return jsonify(saled_product_schema.dump(alyukabond))
+    else:
+        return jsonify(msg="You have not authority to this action"), 401
+
+
+# balans
+@bp.route('/balance')
+@jwt_required()
+def balance():
+    user = db.get_or_404(Users, get_jwt_identity())
+    if user.role == 'a':
+        from_d = request.args.get('from', f"{date.today():%Y-%m-%d}").split('-')
+        to_d = request.args.get('to', f"{date.today():%Y-%m-%d}").split('-')
+        name = request.args.get('name')
+        d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+        s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+        if name == "balance":
+            balance = Balance.query.filter_by(valuta='s').first()
+            return jsonify(data=balance.amount)
+        elif name == 'profit':
+            saled = SaledProduct.query.with_entities(func.sum(SaledProduct.payed_price_d)).filter(SaledProduct.date.between(d, s)).all()
+            aluminy = AluminyNakladnoy.query.with_entities(func.sum(AluminyNakladnoy.total_price_d)).filter(AluminyNakladnoy.date.between(d, s)).all()
+            glue = Glue.query.with_entities(func.sum(Glue.total_price_d)).filter(Glue.date.between(d, s)).all()
+            sticker = StickerNakladnoy.query.with_entities(func.sum(StickerNakladnoy.total_price_d)).filter(StickerNakladnoy.date.between(d, s)).all()
+            exp = Expence.query.with_entities(func.sum(Expence.price)).all()
+            saled_sum = saled[0][0] if saled[0][0] else 0
+            aluminy_sum = aluminy[0][0] if aluminy[0][0] else 0
+            glue_sum = glue[0][0] if glue[0][0] else 0 
+            sticker_sum = sticker[0][0] if sticker[0][0] else 0 
+            expence = exp[0][0] if exp[0][0] else 0
+            data = saled_sum - (aluminy_sum + glue_sum + sticker_sum + expence)
+            return jsonify({"profit":data})
+        elif name == 'expence':
+            exp = Expence.query.all()
+            return jsonify(expence_schema.dump(exp))
+        elif name == 'total':
+            saled = SaledProduct.query.filter(SaledProduct.date.between(d, s)).all()
+            return jsonify(saled_product_schema.dump(saled))
+    else:
+        return jsonify(msg="You have not authority to this action"), 401
+
+
+@bp.route('/transaction', methods=['GET', 'POST', 'DELETE'])
+@jwt_required()
+def transaction():
+    user = db.get_or_404(Users, get_jwt_identity())
+    if user.role == 'a':
+        if request.method == 'GET':
+            id = request.args.get("transaction_id", None)
+            status = request.args.get("status")
+            if id is not None:
+                tr = db.get_or_404(WriteTransaction, id)
+                return jsonify(transaction_schema.dump(tr))
+            trs = WriteTransaction.query.filter_by(status=status).all()
+            return jsonify(transaction_schemas.dump(trs))
+        elif request.method == 'POST':
+            data = request.get_json()
+            if data['status'] == 'add':
+                write = WriteTransaction(
+                        amount=data.get('amount'),
+                        user = user.username,
+                        description = data.get('description'),
+                        status = data.get('status')
+                        )
+                db.session.add(write)
+                db.session.commit()
+                balance_add(data.get("amount"))
+            else:
+                write = WriteTransaction(
+                        amount=data.get('amount'),
+                        user = user.username,
+                        description = data.get('description'),
+                        status = data.get('status')
+                        )
+                db.session.add(write)
+                db.session.commit()
+                balance_minus(data.get("amount"))
+            return jsonify(msg='Success')
+        else:
+            id = request.args.get("transaction_id", None)
+            tr = db.get_or_404(WriteTransaction, id)
+            db.session.delete(tr)
+            db.session.commit()
+            return jsonify(msg="Deleted")
+    else:
+        return jsonify(msg="You are not admin"), 401
+
+
+@bp.route('/report-excel/<int:id>')
+def report_excel(id):
+    user = db.get_or_404(Users, get_jwt_identity())
+    if user.role == 'a':
+        source_excel_file = 'main/alyukabond/report_template.xlsx'
+        destination_excel_file = 'report/report.xlsx'
+        shutil.copy2(source_excel_file, destination_excel_file)
+        sheet_name = 'Накладная'
+        destination_wb = load_workbook(destination_excel_file)
+        destination_sheet = destination_wb[sheet_name]
+        count = 15
+        saled = SaledProduct.query.get(id)
+        destination_sheet["C3"] = saled.date
+        destination_sheet["D5"] = saled.agreement_num
+        destination_sheet["E9"] = saled.customer
+        destination_sheet["E12"] = saled.driver
+        destination_sheet["M12"] = saled.vehicle_number
+        for product in saled.products:
+            typ = {
+                "100":"gl",
+                "150":"mt",
+                "450":"pdr"
+            }.get(product.product.type_product, None)
+            count +=1
+            data_to_write = {
+                f'C{count}': product.product.name if product.product.name else "Alyukabond",
+                f'L{count}': f"{product.product.color1}, {product.product.color2}, {typ}",
+                f'M{count}': "list",
+                f'N{count}': product.product.quantity
+            }
+            for cell_address, value in data_to_write.items():
+                destination_sheet[cell_address] = value
+            destination_wb.save(destination_excel_file)
+        destination_wb.close()
+        return send_from_directory("../report", "report.xlsx")
+    else:
+        return jsonify(msg="You have not authority to this action"), 401
+
