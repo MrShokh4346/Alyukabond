@@ -17,10 +17,11 @@ def create_sale():
         id = request.args.get('id')
         agr_num = request.args.get('agreement_number')
         customer = request.args.get('customer')
+        saler = request.args.get('saler')
         from_d = request.args.get('from')
         to_d = request.args.get('to')
         if agr_num or agr_num or customer or from_d or to_d:
-            data = filter_saled(agr_num=agr_num, customer=customer, from_d=from_d, to_d=to_d)
+            data = filter_saled(agr_num=agr_num, customer=customer, saler=saler, from_d=from_d, to_d=to_d)
             return jsonify(data)
         if id is not None:
             products = SelectedProduct.query.filter_by(saled_id=id).all()
@@ -33,6 +34,7 @@ def create_sale():
             saled = SaledProduct(
                 driver = data.get('driver'),
                 customer = data.get('customer'),
+                saler = data.get('saler'),
                 agreement_num = data.get('agreement_num'),
                 total_price_d = data.get('total_price_d'),
                 total_price_s = data.get('total_price_s'),
@@ -67,6 +69,7 @@ def create_sale():
             extra_sum = data.get('payed_price_s', saled.payed_price_s) - saled.payed_price_s
             saled.driver = data.get('driver', saled.driver)
             saled.customer = data.get('customer', saled.customer)
+            saled.saler = data.get('saler', saled.saler)
             saled.vehicle_number = data.get('vehicle_number', saled.vehicle_number)
             saled.agreement_num = data.get('agreement_num', saled.agreement_num)
             saled.total_price_d = data.get('total_price_d', saled.total_price_d)

@@ -138,7 +138,7 @@ def report_debt():
             provider = request.args.get('provider')
             fr = request.args.get('filter', None)
             aluminy = filter_nakladnoy(name="aluminy_nakladnoy", partiya=partiya, provider=provider, from_d=from_d, to_d=to_d) if fr=='aluminy' else None
-            glue = filter_amount(name='glue', from_d=from_d, to_d=to_d) if fr=='glue' else None
+            glue = glue_schemas.dump(Glue.query.filter(Glue.date > from_d, Glue.date < to_d).all()) if fr=='glue' else None
             sticker = filter_nakladnoy(name="sticker_nakladnoy", partiya=partiya, provider=provider, from_d=from_d, to_d=to_d) if fr=='sticker' else None
             salafan = salafan_schema.dump(GranulaMaterial.query.filter(GranulaMaterial.date > from_d, GranulaMaterial.date < to_d).all()) if fr=='salafan' else None
             data = {

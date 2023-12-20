@@ -28,6 +28,8 @@ class PayedDebtSerializer(Schema):
     user = fields.String()
     date = fields.DateTime(format='%Y-%m-%d %X')
 
+payed_debt_schema = PayedDebtSerializer(many=True)
+
 
 class GranulaMaterialSerializer(Schema):
     id = fields.Integer(dump_only=True)
@@ -94,6 +96,8 @@ class AluminyNakladnoySerializer(Schema):
     sticker = fields.Nested(AluminySerializer, many=True, dump_only=True)
 
 aluminy_nakladnoy_schema = AluminyNakladnoySerializer(many=True)
+aluminy_nakladnoy_schem = AluminyNakladnoySerializer()
+
 
 
 class AluminyAmountSerializer(Schema):
@@ -293,6 +297,7 @@ class SaledProductSerializer(Schema):
     id = fields.Integer(dump_only=True)
     provider = fields.String(required=True)
     customer = fields.String(required=True)
+    saler = fields.String(required=True)
     agreement_num = fields.Integer()
     total_price_d = fields.Float(required=True)
     total_price_s = fields.Float(required=True)
@@ -305,6 +310,8 @@ class SaledProductSerializer(Schema):
     payed_debt = fields.Nested(PayedDebtSerializer,  dump_only=True, required=True, many=True)
 
 saled_product_schema = SaledProductSerializer(many=True)
+saled_product_schem = SaledProductSerializer()
+
 
 
 class WriteTransactionSerializer(Schema):
@@ -320,7 +327,6 @@ transaction_schema = WriteTransactionSerializer()
 
 class MakaronSerializer(Schema):
     id = fields.Integer(dump_only=True)
-    type_al = fields.Integer(required=True)
     color1 = fields.String(required=True)
     color2 = fields.String(required=True)
     al_thickness = fields.Float(required=True)

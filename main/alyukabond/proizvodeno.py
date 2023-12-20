@@ -23,13 +23,16 @@ def make_aluykabond():
     user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'GET':
         material_id = request.args.get("material_id")
+        from_d = request.args.get("from")
+        to_d = request.args.get("to") 
         typ = request.args.get("type")
         color1 = request.args.get("color1")
         color2 = request.args.get("color2")
         thkn = request.args.get("al_thickness")
+        sort = request.args.get("sort")
         length = request.args.get("length")
-        if typ or color1 or color2 or thkn:
-            data = filter_amount(name="alyukabond", type=typ, thickness=thkn, color1=color1, color2=color2, length=length)
+        if typ or color1 or color2 or thkn or from_d or to_d:
+            data = filter_amount(name="alyukabond", type=typ, sort=sort, thickness=thkn, color1=color1, color2=color2,from_d=from_d, to_d=to_d, length=length)
             return jsonify(data)
         if material_id is not None:
             return jsonify(alyukabond_schema.dump(Alyukabond.query.get_or_404(material_id)))
@@ -54,7 +57,7 @@ def make_aluykabond():
             if msg == 'success':
                 alyukabond = Alyukabond(**data)
                 db.session.add(alyukabond)
-                add_alyukabond_amount(type=turi, color1=rangi1, color2=rangi2, length=data.get('list_length'), al_thickness=qalinligi, product_thickness=data.get('product_thickness'), quantity=miqdor)
+                add_alyukabond_amount(type=turi, color1=rangi1, color2=rangi2, sort=sort, length=data.get('list_length'), al_thickness=qalinligi, product_thickness=data.get('product_thickness'), quantity=miqdor)
                 return jsonify(msg='Success')
             else:
                 return jsonify(msg=msg)

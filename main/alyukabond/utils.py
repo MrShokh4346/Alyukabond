@@ -245,12 +245,13 @@ def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, yuza=None, ogirli
     return msg
 
 
-def filter_amount(name=None, type=None, thickness=None, color1=None, color2=None, from_d=None, to_d=None, length=None):
+def filter_amount(name=None, type=None, sort=None, thickness=None, color1=None, color2=None, from_d=None, to_d=None, length=None):
     t = "type_product" if name.count('alyukabond')==1 else f"type_{name.split('_')[0]}"
     c = "color1_id" if name.count('alyukabond')==1 else "color_id"
     thkn = "al_thickness" if name.count('alyukabond')==1 else "thickness"
     query = f"SELECT * FROM {name} WHERE "   # aluminy_amount, glue_amount, sticker_amount, alyukabond_amount
     query += f"{t}={type} AND" if type is not None else ''
+    query += f"sort={sort} AND" if sort is not None else ''
     query += f" {c}='{color1}' AND" if color1 is not None else ''
     query += f" color2_id='{color2}' AND" if color2 is not None else ''
     query += f" list_length={length} AND" if length is not None else ''
@@ -259,16 +260,30 @@ def filter_amount(name=None, type=None, thickness=None, color1=None, color2=None
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
     query = query[:-4]
     prds = db.session.execute(text(query)).fetchall()
-    data = {
-        'aluminy_amount':al_amount_schema.dump(prds),
-        'glue_amount':glue_amount_schemas.dump(prds),
-        'sticker_amount':sticker_amount_schemas.dump(prds),
-        'alyukabond_amount':alyukabond_amount_schema.dump(prds),
-        'alyukabond':alyukabond_schemas.dump(prds),
-        'aluminy':aluminy_schemas.dump(prds),
-        'sicker':sticker_schemas.dump(prds),
-        'glue':glue_schemas.dump(prds)
-    }.get(name, None)
+    if name in ['alyukabond', 'aluminy']:
+        data = []
+        count = 0
+        for prd in prds:
+            if name == 'aluminy':
+                data.append(aluminy_schema.dump(prd))
+                c = Color.query.filter_by(id=prd.color_id).first()
+                data[count]["color"] = color_schema.dump(c)
+            else:
+                data.append(alyukabond_schema.dump(prd))
+                c1 = Color.query.filter_by(id=prd.color1_id).first()
+                c2 = Color.query.filter_by(id=prd.color2_id).first()
+                data[count]["color1"] = color_schema.dump(c1)
+                data[count]["color2"] = color_schema.dump(c2)
+            count += 1
+    else:
+        data = {
+            'aluminy_amount':al_amount_schema.dump(prds),
+            'glue_amount':glue_amount_schemas.dump(prds),
+            'sticker_amount':sticker_amount_schemas.dump(prds),
+            'alyukabond_amount':alyukabond_amount_schema.dump(prds),
+            'sicker':sticker_schemas.dump(prds),
+            'glue':glue_schemas.dump(prds)
+        }.get(name, None)
     return data 
 
 
@@ -280,20 +295,30 @@ def filter_nakladnoy(name=None, partiya=None, provider=None, from_d=None, to_d=N
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
     query = query[:-4]
     prds = db.session.execute(text(query)).fetchall()
-    data = {
-        'aluminy_nakladnoy':aluminy_nakladnoy_schema.dump(prds),
-        'sticker_nakladnoy':sticker_nakladnoy_schema.dump(prds)
-    }.get(name, None)
+    data = []
+    count = 0
+    for prd in prds:
+        data.append(aluminy_nakladnoy_schem.dump(prd))
+        p_d = PayedDebt.query.filter_by(aluminy_nakladnoy_id=prd.id).all() if name=='aluminy_nakladnoy' else PayedDebt.query.filter_by(sticker_nakladnoy_id=prd.id).all()
+        data[count]["payed_debt"] = payed_debt_schema.dump(p_d)
+        count += 1
     return data 
 
 
-def filter_saled(agr_num=None, customer=None, from_d=None, to_d=None):
+def filter_saled(agr_num=None, customer=None, saler=None, from_d=None, to_d=None):
     query = f"SELECT * FROM saled_product WHERE "  
     query += f"customer like '%{customer}%' AND" if customer is not None else ''
+    query += f"saler like '%{saler}%' AND" if saler is not None else ''
     query += f" agreement_num='{agr_num}' AND" if agr_num is not None else ''
     if (from_d and to_d):
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
     query = query[:-4]
     prds = db.session.execute(text(query)).fetchall()
-    data = saled_product_schema.dump(prds)
+    data = []
+    count = 0
+    for prd in prds:
+        data.append(saled_product_schem.dump(prd))
+        p_d = PayedDebt.query.filter_by(saled_id=prd.id).all() 
+        data[count]["payed_debt"] = payed_debt_schema.dump(p_d)
+        count += 1
     return data 

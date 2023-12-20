@@ -461,6 +461,7 @@ class SaledProduct(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     driver = db.Column(db.String)
     customer = db.Column(db.String)
+    saler = db.Column(db.String)
     vehicle_number = db.Column(db.String)
     agreement_num = db.Column(db.Integer)
     total_price_d = db.Column(db.Float)  

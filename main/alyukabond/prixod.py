@@ -128,18 +128,16 @@ def alyuminy_material():
             data = request.get_json()
             try:
                 material = Aluminy.query.get(id)
-                surface = update_aluminy_amount(material=material, thickness=data.get('thickness', material.thickness), color_id=data.get('color_id', material.color_id),
+                surface = update_aluminy_amount(material=material, thickness=data.get('thickness', material.thickness), color=data.get('color_id', material.color_id),
                     list_length=data.get('list_length', material.list_length), list_width=data.get('list_width', material.list_width),
                     roll_weight=data.get('roll_weight', material.roll_weight), quantity=data.get('quantity', material.quantity))
                 material.color_id = data.get('color_id', material.color_id)
-                material.surface += surface
                 material.thickness = data.get('thickness', material.thickness)
                 material.list_width = data.get('list_width', material.list_width)
                 material.list_length = data.get('list_length', material.list_length)
                 material.quantity = data.get('quantity', material.quantity)
                 material.roll_weight = data.get('roll_weight', material.roll_weight)
                 material.price_per_kg = data.get('price_per_kg', material.price_per_kg)
-                material.provider = data.get('provider', material.provider)
                 db.session.commit()
                 return jsonify(msg='Success')
             except AssertionError as err:
@@ -288,33 +286,26 @@ def sticker_material():
 
 
 @bp.route('/makaron', methods=['GET','POST', 'DELETE'])
-def add_makaron():
+def makaron():
     if request.method == 'GET':
         makaron = Makaron.query.all()
         return jsonify(makaron_schema.dump(makaron))
     elif request.method == 'POST':
         data = request.get_json()
-        makaron = Makaron.query.filter_by(color1 = data.get('color1'),color2 = data.get('color2'),
-            al_thickness = data.get('thickness'),list_length = data.get('length')).first()
-        if makaron is None:
-            makaron = Makaron(
-                color1 = data.get('color1'),
-                color2 = data.get('color2'),
-                al_thickness = data.get('thickness'),
-                list_length = data.get('length'),
-                weight = 0
-            )
-            db.session.add(makaron)
-        makaron.weight += data.get('weight')
+        makaron = Makaron(
+            color1 = data.get('color1'),
+            color2 = data.get('color2'),
+            al_thickness = data.get('thickness'),
+            list_length = data.get('length'),
+            weight = data.get('weight')
+        )
+        db.session.add(makaron)
         db.session.commit()
         return jsonify(msg="Created")
     else:
         id = request.args.get('makaron_id')
-        weight = int(request.args.get("weight"))
-        amount = int(request.args.get('amount'))
-        balance_add(amount)
         makaron = db.get_or_404(Makaron, id)
-        makaron.weight -= weight
+        db.session.delete(makaron)
         db.session.commit()
         return jsonify(msg="Success")
 
