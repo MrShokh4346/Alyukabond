@@ -132,20 +132,20 @@ def report_debt():
     user = db.get_or_404(Users, get_jwt_identity())
     if user.role == 'a':
         if request.method == 'GET':
-            from_d = request.args.get('from').split('-')
-            to_d = request.args.get('to').split('-')
+            from_d = request.args.get('from')
+            to_d = request.args.get('to')
+            partiya = request.args.get('partiya')
+            provider = request.args.get('provider')
             fr = request.args.get('filter', None)
-            d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
-            s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
-            aluminy = AluminyNakladnoy.query.filter(AluminyNakladnoy.date.between(d, s)).all()
-            glue = Glue.query.filter(Glue.date.between(d, s)).all()
-            sticker = StickerNakladnoy.query.filter(StickerNakladnoy.date.between(d, s)).all()
-            salafan = GranulaMaterial.query.filter(GranulaMaterial.date.between(d, s)).all()
+            aluminy = filter_nakladnoy(name="aluminy_nakladnoy", partiya=partiya, provider=provider, from_d=from_d, to_d=to_d) if fr=='aluminy' else None
+            glue = filter_amount(name='glue', from_d=from_d, to_d=to_d) if fr=='glue' else None
+            sticker = filter_nakladnoy(name="sticker_nakladnoy", partiya=partiya, provider=provider, from_d=from_d, to_d=to_d) if fr=='sticker' else None
+            salafan = salafan_schema.dump(GranulaMaterial.query.filter(GranulaMaterial.date > from_d, GranulaMaterial.date < to_d).all()) if fr=='salafan' else None
             data = {
-                "aluminy":aluminy_nakladnoy_schema.dump(aluminy),
-                "sticker":sticker_nakladnoy_schema.dump(sticker),
-                "glue":glue_schemas.dump(glue),
-                "salafan":salafan_schema.dump(salafan)
+                "aluminy":aluminy,
+                "sticker":sticker,
+                "glue":glue,
+                "salafan":salafan
             }.get(fr, None)
             return jsonify(data)
         elif request.method == 'POST':
@@ -197,7 +197,7 @@ def report_fee():
             to_d = request.args.get('to').split('-')
             d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
             s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
-            alyukabond = SaledProduct.query.filter(SaledProduct.date.between(d, s)).all()
+            alyukabond = SaledProduct.query.filter(SaledProduct.debt_s>0, SaledProduct.date.between(d, s)).all()
             return jsonify(saled_product_schema.dump(alyukabond))
         elif request.method == 'POST':
             id = request.args.get('id')

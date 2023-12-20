@@ -7,7 +7,7 @@ from flask import  jsonify, request
 from .utils import *
 from .balance import *
 
-
+###################
 @bp.route('/delete-amount', methods=['DELETE'])
 def delete_amount():
     id = request.args.get('id')
@@ -17,8 +17,21 @@ def delete_amount():
     db.session.commit()
     return jsonify(msg="Deleted")
 
+############################
+@bp.route('/filter')
+def filter_route():
+    name =request.args.get("name")
+    typ = request.args.get("type")
+    color1 = request.args.get("color1")
+    color2 = request.args.get("color2")
+    thkn = request.args.get("thickness")
+    data = filter_amount(name=name, type=typ, thickness=thkn, color1=color1, color2=color2)
+    return jsonify(data)
+
+
 
 @bp.route('/color', methods=['GET', 'POST', 'DELETE'])
+@jwt_required()
 def color():
     id = request.args.get('color_id')
     if request.method == 'GET':
@@ -38,17 +51,6 @@ def color():
         db.session.delete(color)
         db.session.commit()
         return jsonify(msg="Success")
-
-
-@bp.route('/filter')
-def filter_route():
-    name =request.args.get("name")
-    typ = request.args.get("type")
-    color1 = request.args.get("color1")
-    color2 = request.args.get("color2")
-    thkn = request.args.get("thickness")
-    data = filter_amount(name=name, type=typ, thickness=thkn, color1=color1, color2=color2)
-    return jsonify(data)
 
 
 @bp.route('/exchange-rate', methods=['GET', 'POST'])
@@ -277,6 +279,7 @@ def sticker_material():
         return jsonify("You have not authority to this action"), 401
     elif request.method == 'DELETE':
         if user.role == 'a':
+            id = request.args.get("material_id")
             material = db.get_or_404(Sticker, id)
             db.session.delete(material)
             db.session.commit()
@@ -295,7 +298,6 @@ def add_makaron():
             al_thickness = data.get('thickness'),list_length = data.get('length')).first()
         if makaron is None:
             makaron = Makaron(
-                type_al = data.get('type'),
                 color1 = data.get('color1'),
                 color2 = data.get('color2'),
                 al_thickness = data.get('thickness'),

@@ -104,26 +104,6 @@ def setka():
         return jsonify("You have not authority to this action"), 401
 
 
-# qarzni boshqarish
-@bp.route('/debt')
-@jwt_required()
-def debt():
-    user = db.get_or_404(Users, get_jwt_identity())
-    data = {"materials":[]}
-    total_sum = 0
-    total_payed = 0
-    total_debt = 0
-    if user.role in ['a', 'se']:
-        data['materials'].append(material_schemas.dump(GranulaMaterial.query.all()))
-        data['total'] = []
-        data['total'].append({"total_sum":GranulaMaterial.query.with_entities(func.sum(GranulaMaterial.total_price)).all()[0][0]})
-        data['total'].append({"total_debt":GranulaMaterial.query.with_entities(func.sum(GranulaMaterial.debt)).all()[0][0]})
-        data['total'].append({"total_payed":GranulaMaterial.query.with_entities(func.sum(GranulaMaterial.payed_price)).all()[0][0]})
-
-        return jsonify(data)
-    return jsonify(msg="You are not admin"), 401
-
-
 # xisobot
 @bp.route('/report')
 @jwt_required()

@@ -15,6 +15,13 @@ def create_sale():
     user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'GET':
         id = request.args.get('id')
+        agr_num = request.args.get('agreement_number')
+        customer = request.args.get('customer')
+        from_d = request.args.get('from')
+        to_d = request.args.get('to')
+        if agr_num or agr_num or customer or from_d or to_d:
+            data = filter_saled(agr_num=agr_num, customer=customer, from_d=from_d, to_d=to_d)
+            return jsonify(data)
         if id is not None:
             products = SelectedProduct.query.filter_by(saled_id=id).all()
             return jsonify(selected_product_schema.dump(products))
@@ -82,7 +89,7 @@ def create_sale():
 
 
 # update prodano
-@bp.route('/update-saled-products/<int:id>')
+@bp.route('/update-saled-products/<int:id>', methods=['PUT'])
 @jwt_required()
 def update_saled(id):
     user = db.get_or_404(Users, get_jwt_identity())

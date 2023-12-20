@@ -243,7 +243,7 @@ def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, yuza=None, ogirli
     return msg
 
 
-def filter_amount(name=None, type=None, thickness=None, color1=None, color2=None, from_d=None, to_d=None):
+def filter_amount(name=None, type=None, thickness=None, color1=None, color2=None, from_d=None, to_d=None, length=None):
     t = "type_product" if name.count('alyukabond')==1 else f"type_{name.split('_')[0]}"
     c = "color1_id" if name.count('alyukabond')==1 else "color_id"
     thkn = "al_thickness" if name.count('alyukabond')==1 else "thickness"
@@ -251,6 +251,7 @@ def filter_amount(name=None, type=None, thickness=None, color1=None, color2=None
     query += f"{t}={type} AND" if type is not None else ''
     query += f" {c}='{color1}' AND" if color1 is not None else ''
     query += f" color2_id='{color2}' AND" if color2 is not None else ''
+    query += f" list_length={length} AND" if length is not None else ''
     query += f" {thkn}={thickness} AND" if thickness is not None else ''
     if (from_d and to_d) and len(name.split('_')) == 1:
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
@@ -261,8 +262,36 @@ def filter_amount(name=None, type=None, thickness=None, color1=None, color2=None
         'glue_amount':glue_amount_schemas.dump(prds),
         'sticker_amount':sticker_amount_schemas.dump(prds),
         'alyukabond_amount':alyukabond_amount_schema.dump(prds),
+        'alyukabond':alyukabond_schemas.dump(prds),
         'aluminy':aluminy_schemas.dump(prds),
         'sicker':sticker_schemas.dump(prds),
         'glue':glue_schemas.dump(prds)
     }.get(name, None)
+    return data 
+
+
+def filter_nakladnoy(name=None, partiya=None, provider=None, from_d=None, to_d=None):
+    query = f"SELECT * FROM {name} WHERE "   
+    query += f"partiya={partiya} AND" if partiya is not None else ''
+    query += f" provider like'%{provider}%' AND" if provider is not None else ''
+    if (from_d and to_d):
+        query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
+    query = query[:-4]
+    prds = db.session.execute(text(query)).fetchall()
+    data = {
+        'aluminy_nakladnoy':aluminy_nakladnoy_schema.dump(prds),
+        'sticker_nakladnoy':sticker_nakladnoy_schema.dump(prds)
+    }.get(name, None)
+    return data 
+
+
+def filter_saled(agr_num=None, customer=None, from_d=None, to_d=None):
+    query = f"SELECT * FROM saled_product WHERE "  
+    query += f"customer like '%{customer}%' AND" if customer is not None else ''
+    query += f" agreement_num='{agr_num}' AND" if agr_num is not None else ''
+    if (from_d and to_d):
+        query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
+    query = query[:-4]
+    prds = db.session.execute(text(query)).fetchall()
+    data = saled_product_schema.dump(prds)
     return data 

@@ -27,8 +27,9 @@ def make_aluykabond():
         color1 = request.args.get("color1")
         color2 = request.args.get("color2")
         thkn = request.args.get("al_thickness")
+        length = request.args.get("length")
         if typ or color1 or color2 or thkn:
-            data = filter_amount(name="alyukabond", type=typ, thickness=thkn, color1=color1, color2=color2)
+            data = filter_amount(name="alyukabond", type=typ, thickness=thkn, color1=color1, color2=color2, length=length)
             return jsonify(data)
         if material_id is not None:
             return jsonify(alyukabond_schema.dump(Alyukabond.query.get_or_404(material_id)))
