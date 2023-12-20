@@ -78,7 +78,7 @@ def alyuminy_material():
         thkn = request.args.get("thickness")
         from_d = request.args.get("from")
         to_d = request.args.get("to")
-        if color or thkn:
+        if color or thkn or from_d or to_d:
             data = filter_amount(name="aluminy", thickness=thkn, color1=color, from_d=from_d, to_d=to_d)
             return jsonify(data)
         elif material_id is not None:

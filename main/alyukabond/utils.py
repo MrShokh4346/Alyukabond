@@ -225,14 +225,16 @@ def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, yuza=None, ogirli
             raise AssertionError(f"There isn't enaugh {rangi2} aluminy in warehouse")
 
         if amount is not None:
-            if amount.surface and (amount.surface > yuza * miqdor) if obj!="granula" else False:
-                amount.surface -= yuza * miqdor 
-            else:
-                raise AssertionError(f"There isn't enaugh {rangi1 if obj=='alyuminy' else ''} {obj} in warehouse")
-            if amount.weight and (amount.weight > ogirlik[obj] * miqdor) if obj!="sticker" else False:
-                amount.weight -= ogirlik[obj] * miqdor
-            else:
-                raise AssertionError(f"There isn't enaugh {rangi1 if obj=='alyuminy' else ''} {obj} in warehouse")
+            if obj!='granula':
+                if amount.surface and (amount.surface > yuza * miqdor):
+                    amount.surface -= yuza * miqdor 
+                else:
+                    raise AssertionError(f"There isn't enaugh {rangi1 if obj=='alyuminy' else ''} {obj} in warehouse")
+            if obj!='sticker':
+                if amount.weight and (amount.weight > ogirlik[obj] * miqdor):
+                    amount.weight -= ogirlik[obj] * miqdor
+                else:
+                    raise AssertionError(f"There isn't enaugh {rangi1 if obj=='alyuminy' else ''} {obj} in warehouse")
             msg="success"
             
         else:

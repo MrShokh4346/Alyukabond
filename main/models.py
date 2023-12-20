@@ -206,7 +206,7 @@ class Aluminy(db.Model):
     price_per_kg = db.Column(db.Float)
     price = db.Column(db.Float)
     partiya = db.Column(db.Integer)
-    date = db.Column(db.DateTime)
+    date = db.Column(db.DateTime, default=datetime.now())
     quantity = db.Column(db.Integer, nullable=False)
 
     @validates("price_per_kg")
