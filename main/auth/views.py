@@ -17,7 +17,7 @@ def login():
             access_token = create_access_token(identity=user.id)
             refresh_token = create_refresh_token(identity=user.id)
             return jsonify(access_token=access_token, refresh_token=refresh_token, role=user.role)
-    return jsonify({"msg":"Bad username or password"})
+    return jsonify({"msg":"Неверный логин или пароль"})
 
 
 @bp.route('/logout', methods=['DELETE'])
@@ -31,7 +31,7 @@ def logout():
         )
     db.session.add(blacklisted_token)
     db.session.commit()
-    return jsonify({"msg": "Successfully logged out"}), 200
+    return jsonify({"msg": "Успешно вышел из системы"}), 200
 
 
 @bp.route('/user-info', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
@@ -79,4 +79,4 @@ def users():
             db.session.commit()
             return jsonify(msg='Deleted')
     else:
-        return jsonify(msg="You are not admin")
+        return jsonify(msg="У вас нет полномочий на это действие")

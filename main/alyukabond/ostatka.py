@@ -14,16 +14,16 @@ from .balance import *
 def warehouse(name):
     turi = request.args.get('type')
     color = request.args.get("color")
+    sort = request.args.get("sort")
     color1 = request.args.get("color1")
     color2 = request.args.get("color2")
     thkn = request.args.get("thickness")
-    from_d = request.args.get('from')
-    to_d = request.args.get('to')
+    length = request.args.get("length")
     data = {
-        'aluminy':filter_amount(name="aluminy_amount", thickness=thkn, color1=color, from_d=from_d, to_d=to_d),
-        'sticker':filter_amount(name="sticker_amount", type=turi, from_d=from_d, to_d=to_d),
-        'glue':filter_amount(name="glue_amount", from_d=from_d, to_d=to_d),
-        'alyukabond':filter_amount(name="alyukabond_amount", thickness=thkn, color1=color1, color2=color2, from_d=from_d, to_d=to_d)
+        'aluminy':filter_amount(name="aluminy_amount", thickness=thkn, color1=color) if name=='aluminy' else '',
+        'sticker':filter_amount(name="sticker_amount", type=turi) if name=='sticker' else '',
+        'glue':filter_amount(name="glue_amount") if name=='glue' else '',
+        'alyukabond':filter_amount(name="alyukabond_amount", thickness=thkn, sort=sort, length=length, color1=color1, color2=color2) if name=='alyukabond' else ''
     }.get(name)
     # data = {}
     # alyukabond_amount = AlyukabondAmount.query.all()

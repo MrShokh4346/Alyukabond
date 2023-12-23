@@ -49,7 +49,7 @@ def add_glue_amount(thickness=None, width=1.22, length=0, roll_weight=0, quantit
         # db.session.commit()
     surface = length * quantity * width
     amount.surface += surface
-    amount.weight += roll_weight * quantity
+    amount.weight += roll_weight 
     db.session.commit()
 
 
@@ -65,9 +65,9 @@ def update_glue_amount(material:Glue=None, thickness=None, length=None, width=1.
     #     db.session.commit()
     if amount is not None:
         surface = material.length * extra_quantity * width
-        weight = material.weight * extra_quantity 
+        weight = material.weight 
         surface += extra_length * quantity * width
-        weight += extra_weight * quantity
+        weight += extra_weight
         amount.surface += surface 
         amount.weight += weight 
     # else:
@@ -144,7 +144,7 @@ def update_alyukabond_aluminy(amount1, amount2):
         aluminy4.weight -= new_weight
         db.session.commit()
     else:
-        raise AssertionError(f"There isn't enaugh this type of aluminy in warehouse")
+        raise AssertionError(f"На складе недостаточно алюмина данного типа")
 
 
 def update_alyukabond_sticker(amount1, amount2):
@@ -157,7 +157,7 @@ def update_alyukabond_sticker(amount1, amount2):
         sticker2.surface -= new_surface
         db.session.commit()
     else:
-        AssertionError(f"There isn't enaugh {sticker2.type_sticker}  sticker in warehouse")
+        AssertionError(f"На складе недостаточно наклейка данного типа")
 
 
 def update_alyukabond_glue(amount1, amount2):
@@ -208,37 +208,46 @@ def update_alyukabond_amount(material:Alyukabond=None, type=None, sort=None, col
             db.session.commit()
 
 
-def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, yuza=None, ogirlik=None, sort=1, miqdor=1):
-    for obj in ['alyuminy', 'sticker', 'glue', 'granula']:
+def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, length=None, width=None, miqdor=1):
+    for obj in ['алюмина', 'наклейка', 'клея', 'гранула']:
         amount = {
-            'alyuminy': AluminyAmount.query.filter_by(color_id=rangi1, thickness=qalinligi).first(),
-            'sticker': StickerAmount.query.filter_by(type_sticker=turi).first(),
-            'glue': GlueAmount.query.filter_by(index1=True).first(),
-            'granula':GranulaAmount.query.filter_by(sklad=False).first()
+            'алюмина': AluminyAmount.query.filter_by(color_id=rangi1, thickness=qalinligi).first(),
+            'наклейка': StickerAmount.query.filter_by(type_sticker=turi).first(),
+            'клея': GlueAmount.query.filter_by(index1=True).first(),
+            'гранула':GranulaAmount.query.filter_by(sklad=False).first()
         }.get(obj, False)
-
-        aluminy2 = AluminyAmount.query.filter_by(color_id=rangi2, thickness=qalinligi).first() if obj == 'alyuminy' else None
+        yuza = {
+            'алюмина':length * (width + 0.02),
+            "наклейка":length * (width + 0.02),
+            "клея":length * (width + 0.06)
+        }.get(obj, False)
+        weight = {
+            'алюмина':(length * (width + 0.02) * 1.4)/3 ,
+            "клея":(length * (width + 0.06) * 0.27)/3,
+            "гранула":10.3
+        }.get(obj, False)
+        aluminy2 = AluminyAmount.query.filter_by(color_id=rangi2, thickness=qalinligi).first() if obj == 'алюмина' else None
         if amount is not None and aluminy2 is not None and aluminy2.surface > yuza * miqdor:
             aluminy2.surface -= yuza * miqdor
-            aluminy2.weight -= ogirlik[obj] * miqdor
-        elif aluminy2 is None and obj == 'alyuminy':
-            raise AssertionError(f"There isn't enaugh {rangi2} aluminy in warehouse")
+            aluminy2.weight -= weight * miqdor
+        elif aluminy2 is None and obj == 'алюмина':
+            raise AssertionError(f"На складе недостаточно {obj} данного типа")
 
         if amount is not None:
-            if obj!='granula':
+            if obj!='гранула':
                 if amount.surface and (amount.surface > yuza * miqdor):
                     amount.surface -= yuza * miqdor 
                 else:
-                    raise AssertionError(f"There isn't enaugh {rangi1 if obj=='alyuminy' else ''} {obj} in warehouse")
-            if obj!='sticker':
-                if amount.weight and (amount.weight > ogirlik[obj] * miqdor):
-                    amount.weight -= ogirlik[obj] * miqdor
+                    raise AssertionError(f"На складе недостаточно {obj} данного типа")
+            if obj!='наклейка':
+                if amount.weight and (amount.weight > weight * miqdor):
+                    amount.weight -= weight * miqdor
                 else:
-                    raise AssertionError(f"There isn't enaugh {rangi1 if obj=='alyuminy' else ''} {obj} in warehouse")
+                    raise AssertionError(f"На складе недостаточно {obj} данного типа")
             msg="success"
             
         else:
-            raise AssertionError(f"There isn't enaugh {rangi1 if obj=='alyuminy' else ''} {obj} in warehouse")
+            raise AssertionError(f"На складе недостаточно {obj} данного типа")
 
             break
     db.session.commit()
@@ -259,12 +268,13 @@ def filter_amount(name=None, type=None, sort=None, thickness=None, color1=None, 
     if (from_d and to_d) and len(name.split('_')) == 1:
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
     query = query[:-4]
+    print(query)
     prds = db.session.execute(text(query)).fetchall()
-    if name in ['alyukabond', 'aluminy']:
+    if name in ['alyukabond', 'aluminy', "aluminy_amount", "alyukabond_amount"]:
         data = []
         count = 0
         for prd in prds:
-            if name == 'aluminy':
+            if name in ['aluminy', "aluminy_amount"]:
                 data.append(aluminy_schema.dump(prd))
                 c = Color.query.filter_by(id=prd.color_id).first()
                 data[count]["color"] = color_schema.dump(c)

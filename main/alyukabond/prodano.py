@@ -51,7 +51,7 @@ def create_sale():
                 if prd.quantity < product['quantity']:
                     # db.session.delete(saled)
                     # db.session.commit()
-                    return jsonify(msg="There isn't enough product in warehouse")
+                    return jsonify(msg="На складе недостаточно продукт данного типа")
                 prd.quantity -= product['quantity']
                 selected = SelectedProduct(saled_id=saled.id, product_id=prd.id, quantity=product['quantity'])
                 db.session.add(selected)
@@ -81,14 +81,14 @@ def create_sale():
             db.session.commit()
             balance_add(extra_sum)
             return jsonify(msg='Success')
-        return jsonify("You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
     elif request.method == 'DELETE':
         if user.role == 'a':
             material = db.get_or_404(SaledProduct, id)
             db.session.delete(material)
             db.session.commit()
             return jsonify(msg="Deleted")
-        return jsonify("You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
 # update prodano
@@ -108,14 +108,14 @@ def update_saled(id):
                         prd = db.get_or_404(AlyukabondAmount, product['id'])
                         extra_quantity = product['quantity'] - st.quantity
                         if prd.quantity < extra_quantity:
-                            return jsonify(msg="There isn't enough alyukabond in warehouse")
+                            return jsonify(msg="На складе недостаточно алюкобонд данного типа")
                         prd.quantity -= extra_quantity
                         st.quantity = product['quantity']
                         lst.remove(st)
                     else:
                         prd = AlyukabondAmount.query.get(product['id'])
                         if prd and prd.quantity < product['quantity']:
-                            return jsonify(msg="There isn't enough alyukabond in warehouse")
+                            return jsonify(msg="На складе недостаточно алюкобонд данного типа")
                         prd.quantity -= product['quantity']
                         selected = SelectedProduct(saled_id=saled.id, product_id=prd.id, quantity=product['quantity'])
                         db.session.add(selected)
@@ -123,5 +123,5 @@ def update_saled(id):
                 db.session.delete(s)
             db.session.commit()
         return jsonify(msg="Success")
-    return jsonify("You have not authority to this action"), 401
+    return jsonify(msg="У вас нет полномочий на это действие"), 401
 

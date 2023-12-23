@@ -153,6 +153,17 @@ class Color(db.Model):
     aluminyamount = db.relationship('AluminyAmount', back_populates='color')
 
 
+# class AluminyThickness(db.Model):
+#     __tablename__ = 'aluminy_thickness'
+#     id = db.Column(db.Integer, primary_key=True)
+#     thickness = db.Column(db.Float)
+
+
+# class AlyukabondLength(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     length = db.Column(db.Float)
+
+
 class AluminyNakladnoy(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     partiya = db.Column(db.Integer)
@@ -420,6 +431,7 @@ class Alyukabond(db.Model):
 
 class PayedDebt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    agreement_number = db.Column(db.String)
     amount_d = db.Column(db.Float)
     amount_s = db.Column(db.Float)
     user = db.Column(db.String)

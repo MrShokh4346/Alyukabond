@@ -45,15 +45,12 @@ def make_aluykabond():
             rangi1 = data.get('color1_id')
             rangi2 = data.get('color2_id', None)
             qalinligi = data.get('al_thickness')
-            yuza = data.get('list_length') * data.get('list_width', 1.22)
-            ogirlik = {
-                    "alyuminy":1.4,
-                    "glue":0.27,
-                    "granula":10.3
-                }
+            length = data.get('list_length') 
+            width = data.get('list_width', 1.22)
+            
             sort = request.get_json().get('sort')
             miqdor = request.get_json().get('quantity')
-            msg = check(turi=turi, rangi1=rangi1, rangi2=rangi2, qalinligi=qalinligi, yuza=yuza, ogirlik=ogirlik, sort=sort, miqdor=miqdor)
+            msg = check(turi=turi, rangi1=rangi1, rangi2=rangi2, qalinligi=qalinligi, length=length, width=width, sort=sort, miqdor=miqdor)
             if msg == 'success':
                 alyukabond = Alyukabond(**data)
                 db.session.add(alyukabond)
@@ -88,7 +85,7 @@ def make_aluykabond():
                 return jsonify(msg='Success')
             except AssertionError as err:
                 return jsonify(msg=f"{str(err)}"), 400
-        return jsonify("You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
     elif request.method == 'DELETE':
         if user.role == 'a':
             id = request.args.get('material_id')
@@ -96,5 +93,5 @@ def make_aluykabond():
             db.session.delete(material)
             db.session.commit()
             return jsonify(msg="Deleted")
-        return jsonify("You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
 

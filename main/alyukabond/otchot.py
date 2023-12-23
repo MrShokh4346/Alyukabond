@@ -87,7 +87,7 @@ def report():
             data = {f"{fr}":objects}
         return jsonify(data)
     else:
-        return jsonify(msg="You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
 # Mahsulot xisobot
@@ -103,7 +103,7 @@ def report_product():
         alyukabond = Alyukabond.query.filter(Alyukabond.date.between(d, s)).all()
         return jsonify(alyukabond_schemas.dump(alyukabond))
     else:
-        return jsonify(msg="You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
 # Sotilgan tovar xisobot
@@ -116,13 +116,13 @@ def report_saled():
         to_d = request.args.get('to').split('-')
         d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
         s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
-        saled = SaledProduct.query.filter(Alyukabond.date.between(d, s)).all()
+        saled = SaledProduct.query.filter(SaledProduct.date.between(d, s)).all()
         data = {
             "saled":saled_product_schema.dump(saled)
         }
         return jsonify(data)
     else:
-        return jsonify(msg="You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
 # Qarzlar xisobot
@@ -183,7 +183,7 @@ def report_debt():
                 return jsonify(msg="Success")
             return jsonify(msg="You are entered more then debt")
     else:
-        return jsonify(msg="You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
 # Haqlar xisobot
@@ -210,14 +210,30 @@ def report_fee():
                 obj.payed_price_s += data.get('amount_s')
                 obj.debt_d -= data.get('amount_d')
                 obj.debt_s -= data.get('amount_s')
-                payed = PayedDebt(amount_d=data.get('amount_d'), amount_s=data.get('amount_s'), user=data.get('user'), saled_id = obj.id)
+                payed = PayedDebt(amount_d=data.get('amount_d'), agreement_num=obj.agreement_num, amount_s=data.get('amount_s'), user=data.get('user'), saled_id = obj.id)
                 db.session.add(payed)
                 db.session.commit()
                 balance_add(data.get('amount_s'))
                 return jsonify(msg="Success")
             return jsonify(msg="You are entered more then debt")
     else:
-        return jsonify(msg="You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
+
+
+#payed debt filter
+@bp.route('/payed-debt')
+def payed_debt():
+    from_d = request.args.get('from')
+    to_d = request.args.get('to')
+    agr_num = request.args.get('agreement_number')
+    provider = request.args.get('provider')
+    query = f"SELECT * FROM payed_debt WHERE"  
+    query += f" payed_debt.user like '%{provider}%' AND" if provider is not None else ''
+    query += f" agreement_number='{agr_num}' AND" if agr_num is not None else ''
+    query += f" date BETWEEN '{from_d}' AND '{to_d}' AND" if from_d and to_d else ''
+    query = query[:-4]
+    prds = db.session.execute(text(query)).fetchall()
+    return jsonify(payed_debt_schema.dump(prds))
 
 
 # balans
@@ -232,8 +248,13 @@ def balance():
         d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
         s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
         if name == "balance":
+            w_t = WriteTransaction.query.all()
             balance = Balance.query.filter_by(valuta='s').first()
-            return jsonify(data=balance.amount)
+            data = {
+                'balance':balance.amount,
+                "transactions":transaction_schemas.dump(w_t)
+            }
+            return jsonify(data)
         elif name == 'profit':
             saled = SaledProduct.query.with_entities(func.sum(SaledProduct.payed_price_d)).filter(SaledProduct.date.between(d, s)).all()
             aluminy = AluminyNakladnoy.query.with_entities(func.sum(AluminyNakladnoy.total_price_d)).filter(AluminyNakladnoy.date.between(d, s)).all()
@@ -246,7 +267,7 @@ def balance():
             sticker_sum = sticker[0][0] if sticker[0][0] else 0 
             expence = exp[0][0] if exp[0][0] else 0
             data = saled_sum - (aluminy_sum + glue_sum + sticker_sum + expence)
-            return jsonify({"profit":data})
+            return jsonify({"profit":[data]})
         elif name == 'expence':
             exp = Expence.query.all()
             return jsonify(expence_schema.dump(exp))
@@ -254,7 +275,7 @@ def balance():
             saled = SaledProduct.query.filter(SaledProduct.date.between(d, s)).all()
             return jsonify(saled_product_schema.dump(saled))
     else:
-        return jsonify(msg="You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
 @bp.route('/transaction', methods=['GET', 'POST', 'DELETE'])
@@ -306,6 +327,7 @@ def transaction():
 
 
 @bp.route('/report-excel/<int:id>')
+@jwt_required()
 def report_excel(id):
     user = db.get_or_404(Users, get_jwt_identity())
     if user.role == 'a':
@@ -331,9 +353,10 @@ def report_excel(id):
             count +=1
             data_to_write = {
                 f'C{count}': product.product.name if product.product.name else "Alyukabond",
-                f'L{count}': f"{product.product.color1}, {product.product.color2}, {typ}",
-                f'M{count}': "list",
-                f'N{count}': product.product.quantity
+                f'L{count}': f"{product.product.color1.name}, {product.product.color2.name if product.product.color2 else ''}",
+                f'M{count}': f"{product.product.list_length}, {product.product.list_width}",
+                f'N{count}': "list",
+                f'P{count}': product.product.quantity
             }
             for cell_address, value in data_to_write.items():
                 destination_sheet[cell_address] = value
@@ -341,5 +364,5 @@ def report_excel(id):
         destination_wb.close()
         return send_from_directory("../report", "report.xlsx")
     else:
-        return jsonify(msg="You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
 

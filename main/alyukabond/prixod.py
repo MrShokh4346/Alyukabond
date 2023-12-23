@@ -7,28 +7,6 @@ from flask import  jsonify, request
 from .utils import *
 from .balance import *
 
-###################
-@bp.route('/delete-amount', methods=['DELETE'])
-def delete_amount():
-    id = request.args.get('id')
-    amount = Aluminy.query.get(id) 
-    # amount = AluminyAmount.query.get(id)
-    db.session.delete(amount)
-    db.session.commit()
-    return jsonify(msg="Deleted")
-
-############################
-@bp.route('/filter')
-def filter_route():
-    name =request.args.get("name")
-    typ = request.args.get("type")
-    color1 = request.args.get("color1")
-    color2 = request.args.get("color2")
-    thkn = request.args.get("thickness")
-    data = filter_amount(name=name, type=typ, thickness=thkn, color1=color1, color2=color2)
-    return jsonify(data)
-
-
 
 @bp.route('/color', methods=['GET', 'POST', 'DELETE'])
 @jwt_required()
@@ -51,14 +29,59 @@ def color():
         db.session.delete(color)
         db.session.commit()
         return jsonify(msg="Success")
+    
+
+# @bp.route('/aluminy-thickness', methods=['GET', 'POST', 'DELETE'])
+# @jwt_required()
+# def aluminy_thickness():
+#     id = request.args.get('id')
+#     if request.method == 'GET':
+#         if id is not None:
+#             thkn = AluminyThickness.query.get(id)
+#             return jsonify(aluminy_thickness_schema.dump(thkn))
+#         thkns = AluminyThickness.query.all()
+#         return jsonify(aluminy_thickness_schemas.dump(thkns))
+#     elif request.method == 'POST':
+#         data = request.get_json()
+#         thkn = AluminyThickness(thickness=data.get('thickness'))
+#         db.session.add(thkn)
+#         db.session.commit()
+#         return jsonify(msg="Success")
+#     else:
+#         thkn = AluminyThickness.query.get(id)
+#         db.session.delete(thkn)
+#         db.session.commit()
+#         return jsonify(msg="Success")
+
+
+# @bp.route('/alyukabond-length', methods=['GET', 'POST', 'DELETE'])
+# @jwt_required()
+# def alyukabond_length():
+#     id = request.args.get('id')
+#     if request.method == 'GET':
+#         if id is not None:
+#             thkn = AlyukabondLength.query.get(id)
+#             return jsonify(alyukabond_length_schema.dump(thkn))
+#         thkns = AlyukabondLength.query.all()
+#         return jsonify(alyukabond_length_schemas.dump(thkns))
+#     elif request.method == 'POST':
+#         data = request.get_json()
+#         thkn = AlyukabondLength(length=data.get('thickness'))
+#         db.session.add(thkn)
+#         db.session.commit()
+#         return jsonify(msg="Success")
+#     else:
+#         thkn = AlyukabondLength.query.get(id)
+#         db.session.delete(thkn)
+#         db.session.commit()
+#         return jsonify(msg="Success")
 
 
 @bp.route('/exchange-rate', methods=['GET', 'POST'])
 def exchange_rate():
     if request.method == 'GET':
-        rate = ExchangeRate.query.order_by(ExchangeRate.date.desc()).first()
-        data = {"rate":rate.rate,  "date":f"{rate.date:%Y-%m-%d %X}" } if rate else None
-        return jsonify(data)
+        rate = ExchangeRate.query.order_by(ExchangeRate.id.desc()).first()
+        return jsonify(exchange_rate_schema.dump(rate))
     else:
         data = request.get_json()
         rate = ExchangeRate(rate=data.get('rate'))
@@ -142,7 +165,7 @@ def alyuminy_material():
                 return jsonify(msg='Success')
             except AssertionError as err:
                 return jsonify(msg=f"{str(err)}"), 400
-        return jsonify("You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
     elif request.method == 'DELETE':
         if user.role == 'a':
             id = request.args.get("material_id")
@@ -150,7 +173,7 @@ def alyuminy_material():
             db.session.delete(material)
             db.session.commit()
             return jsonify(msg="Deleted")
-        return jsonify("You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
 # kley xomashyo malumot kiritish
@@ -200,14 +223,14 @@ def glue_material():
                 return jsonify(msg='Success')
             except AssertionError as err:
                 return jsonify(msg=f"{str(err)}"), 400
-        return jsonify("You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
     elif request.method == 'DELETE':
         if user.role == 'a':
             material = db.get_or_404(Glue, id)
             db.session.delete(material)
             db.session.commit()
             return jsonify(msg="Deleted")
-        return jsonify("You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
 # nakleyka xomashyo malumot kiritish
@@ -217,9 +240,11 @@ def sticker_material():
     user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'GET':
         material_id = request.args.get("material_id")
+        from_d = request.args.get("from")
+        to_d = request.args.get("to")
         typ = request.args.get("type")
-        if typ:
-            data = filter_amount(name="sticker", type=typ)
+        if typ or from_d  or to_d:
+            data = filter_amount(name="sticker", type=typ, from_d=from_d, to_d=to_d)
             return jsonify(data)
         if material_id is not None:
             return jsonify(sticker_schema.dump(Sticker.query.get_or_404(material_id)))
@@ -274,7 +299,7 @@ def sticker_material():
                 return jsonify(msg='Success')
             except AssertionError as err:
                 return jsonify(msg=f"{str(err)}"), 400
-        return jsonify("You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
     elif request.method == 'DELETE':
         if user.role == 'a':
             id = request.args.get("material_id")
@@ -282,7 +307,7 @@ def sticker_material():
             db.session.delete(material)
             db.session.commit()
             return jsonify(msg="Deleted")
-        return jsonify("You have not authority to this action"), 401
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
 @bp.route('/makaron', methods=['GET','POST', 'DELETE'])

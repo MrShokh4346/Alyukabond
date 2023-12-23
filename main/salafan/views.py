@@ -12,6 +12,7 @@ from uuid import uuid1
 import os
 from .balance import balance_minus
 from main.salafan import bp
+from sqlalchemy import text
 
 
 
@@ -22,6 +23,14 @@ def material():
     id = request.args.get('material_id')
     user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'GET':
+        from_d = request.args.get("from")
+        to_d = request.args.get("to")
+        if from_d and to_d:
+            from_d, to_d = from_d.split('-'), to_d.split('-')
+            d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+            s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+            g_materials = GranulaMaterial.query.filter(GranulaMaterial.date.between(d, s)).all()
+            return jsonify(material_schemas.dump(g_materials))
         if id is not None:
             material =  db.get_or_404(GranulaMaterial, id)
             return jsonify(material_schema.dump(material))
@@ -114,7 +123,7 @@ def report():
 
         data = {
             "poterya":GranulaPoteriya.query.with_entities(func.sum(GranulaPoteriya.material_weight - GranulaPoteriya.granula_weight)).all()[0][0],
-            "sklad":granula_amount.weight if granula_amount else "There isn't granula in the warehouse",
+            "sklad":granula_amount.weight if granula_amount else "На складе недостаточно гранула",
         }
         return jsonify(data)
     return jsonify(msg="You are not admin"), 401
@@ -186,8 +195,8 @@ def warehouse():
     data = {}
     m_a = MaterialAmount.query.filter_by(index1=True).first()
     g_a = GranulaAmount.query.filter_by(sklad=False).first()
-    data['material_amount'] = m_a.amount if m_a else "There isn't material in the warehouse"
-    data['granula_amount'] = g_a.weight if g_a else "There isn't granula in the warehouse"
+    data['material_amount'] = m_a.amount if m_a else "На складе недостаточно материал"
+    data['granula_amount'] = g_a.weight if g_a else "На складе недостаточно гранула"
     return jsonify(data)
 
 
@@ -214,8 +223,19 @@ def make_granula():
             db.session.commit()
             return jsonify(msg="Success")
         else:
-            return jsonify(msg="There isn't enough material in warehouse")
+            return jsonify(msg="На складе недостаточно материал")
     else:
+        id = request.args.get('id')
+        from_d = request.args.get("from")
+        to_d = request.args.get("to")
+        if from_d and to_d:
+            print(from_d, to_d)
+            query = f"SELECT * FROM granula_poteriya WHERE date BETWEEN '{from_d}' AND '{to_d}'"
+            prds = db.session.execute(text(query)).fetchall()
+            print(prds)
+            return jsonify(gr_sklad_schema.dump(prds))
+        if id is not None:
+            return jsonify(gr_sklad_schem.dump(GranulaPoteriya.query.get(id)))
         data = {
             'poteriya':gr_sklad_schema.dump(GranulaPoteriya.query.all()),
             'amount':gr_amount_schema.dump(GranulaAmount.query.filter_by(sklad=False).first())

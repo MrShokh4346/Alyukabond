@@ -21,10 +21,27 @@ color_schema = ColorSerializer()
 colors_schema = ColorSerializer(many=True)
 
 
+# class AluminyThicknessSerializer(Schema):
+#     id = fields.Integer(dump_only=True)
+#     thickness = fields.Float()
+
+# aluminy_thickness_schema = AluminyThicknessSerializer()
+# aluminy_thickness_schemas = AluminyThicknessSerializer(many=True)
+
+
+# class AlyukabondLengthSerializer(Schema):
+#     id = fields.Integer(dump_only=True)
+#     length = fields.Float()
+
+# alyukabond_length_schema = AlyukabondLengthSerializer()
+# alyukabond_length_schemas = AlyukabondLengthSerializer(many=True)
+
+
 class PayedDebtSerializer(Schema):
     id = fields.Integer(dump_only=True)
     amount_s = fields.Float(required=True)
     amount_d = fields.Float(required=True)
+    agr_num = fields.String()
     user = fields.String()
     date = fields.DateTime(format='%Y-%m-%d %X')
 
@@ -237,6 +254,7 @@ class GranulaPoteriyaSerializer(Schema):
     date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 gr_sklad_schema = GranulaPoteriyaSerializer(many=True)
+gr_sklad_schem = GranulaPoteriyaSerializer()
 
 
 class GranulaSAmountSerializer(Schema):
@@ -334,3 +352,11 @@ class MakaronSerializer(Schema):
     weight = fields.Float(required=True)
 
 makaron_schema = MakaronSerializer(many=True)
+
+
+class ExchangeRateSerializer(Schema):
+    id = fields.Integer(dump_only=True)
+    rate = fields.Float()
+    date = fields.DateTime(required=True, format='%Y-%m-%d %X')
+
+exchange_rate_schema = ExchangeRateSerializer()

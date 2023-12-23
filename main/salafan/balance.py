@@ -10,7 +10,7 @@ def balance_minus(amount):
         db.session.add(balance_d)
         db.session.commit()
     if balance_s.amount < amount:
-        raise AssertionError("There is not enough money in the balance")
+        raise AssertionError("На балансе недостаточно денег")
     balance_s.amount -= amount
     rate = ExchangeRate.query.order_by(ExchangeRate.date.desc()).first()
     balance_d.amount -= amount / rate.rate
