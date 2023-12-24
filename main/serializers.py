@@ -350,8 +350,17 @@ class MakaronSerializer(Schema):
     al_thickness = fields.Float(required=True)
     list_length = fields.Float(required=True)
     weight = fields.Float(required=True)
+    date = fields.DateTime(required=True, format='%Y-%m-%d')
 
 makaron_schema = MakaronSerializer(many=True)
+
+
+class GranulaOtxodSerializer(Schema):
+    id = fields.Integer(dump_only=True)
+    weight = fields.Float(required=True)
+    date = fields.DateTime(required=True, format='%Y-%m-%d')
+
+granula_otxod_schema = GranulaOtxodSerializer(many=True)
 
 
 class ExchangeRateSerializer(Schema):

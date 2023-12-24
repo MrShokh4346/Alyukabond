@@ -590,3 +590,10 @@ class Makaron(db.Model):
     al_thickness = db.Column(db.Float)
     list_length = db.Column(db.Float)
     weight = db.Column(db.Float)
+    date = db.Column(db.DateTime, default=datetime.now())
+
+
+class GranulaOtxod(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    weight = db.Column(db.Float)
+    date = db.Column(db.DateTime, default=datetime.now())

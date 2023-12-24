@@ -50,8 +50,10 @@ def make_aluykabond():
             
             sort = request.get_json().get('sort')
             miqdor = request.get_json().get('quantity')
-            msg = check(turi=turi, rangi1=rangi1, rangi2=rangi2, qalinligi=qalinligi, length=length, width=width, sort=sort, miqdor=miqdor)
+            msg = check(turi=turi, rangi1=rangi1, rangi2=rangi2, qalinligi=qalinligi, length=length, width=width, miqdor=miqdor)
             if msg == 'success':
+                if data.get("type"):
+                    del data["type"] 
                 alyukabond = Alyukabond(**data)
                 db.session.add(alyukabond)
                 add_alyukabond_amount(type=turi, color1=rangi1, color2=rangi2, sort=sort, length=data.get('list_length'), al_thickness=qalinligi, product_thickness=data.get('product_thickness'), quantity=miqdor)

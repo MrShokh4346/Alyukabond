@@ -268,7 +268,6 @@ def filter_amount(name=None, type=None, sort=None, thickness=None, color1=None, 
     if (from_d and to_d) and len(name.split('_')) == 1:
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
     query = query[:-4]
-    print(query)
     prds = db.session.execute(text(query)).fetchall()
     if name in ['alyukabond', 'aluminy', "aluminy_amount", "alyukabond_amount"]:
         data = []

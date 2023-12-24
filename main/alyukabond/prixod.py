@@ -334,3 +334,23 @@ def makaron():
         db.session.commit()
         return jsonify(msg="Success")
 
+
+@bp.route('/granula-otxod', methods=['GET','POST', 'DELETE'])
+def granula_otxod():
+    if request.method == 'GET':
+        makaron = GranulaOtxod.query.all()
+        return jsonify(granula_otxod_schema.dump(makaron))
+    elif request.method == 'POST':
+        data = request.get_json()
+        makaron = GranulaOtxod(
+            weight = data.get('weight')
+        )
+        db.session.add(makaron)
+        db.session.commit()
+        return jsonify(msg="Created")
+    else:
+        id = request.args.get('makaron_id')
+        makaron = db.get_or_404(GranulaOtxod, id)
+        db.session.delete(makaron)
+        db.session.commit()
+        return jsonify(msg="Success")
