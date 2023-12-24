@@ -59,14 +59,14 @@ def create_sale():
         except AssertionError as err:
             return jsonify(msg=f"{str(err)}"), 400
         else:
-            balance_add(data.get('payed_price_s'))
+            balance_add(data.get('payed_price_d'))
             return jsonify(msg="Created")
     elif request.method == 'PUT' or request.method == 'PATCH':
         if user.role == 'a':
             id = request.args.get('saled_id')
             data = request.get_json()
             saled = SaledProduct.query.get(id)
-            extra_sum = data.get('payed_price_s', saled.payed_price_s) - saled.payed_price_s
+            extra_sum = data.get('payed_price_d', saled.payed_price_d) - saled.payed_price_d
             saled.driver = data.get('driver', saled.driver)
             saled.customer = data.get('customer', saled.customer)
             saled.saler = data.get('saler', saled.saler)

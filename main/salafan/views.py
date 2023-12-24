@@ -37,22 +37,29 @@ def material():
         g_materials = GranulaMaterial.query.all()
         return jsonify(material_schemas.dump(g_materials))
     elif request.method == 'POST':
-        material = GranulaMaterial(
-            name = request.get_json().get('name'),
-            type_material = request.get_json().get('type_material'),
-            total_weight = request.get_json().get('total_weight'),
-            waste = request.get_json().get('waste'),
-            weight = round(float(request.get_json().get('total_weight')) * (1 - float(request.get_json().get('waste')) / 100), 2),
-            price_per_kg = request.get_json().get('price_per_kg'),
-            total_price = request.get_json().get('total_price'),
-            payed_price = request.get_json().get('payed_price'),
-            debt = round(float(request.get_json().get('total_price')) - float(request.get_json().get('payed_price')), 2),
-            provider = request.get_json().get('provider'),
-            status = request.get_json().get('status')
-        )
-        db.session.add(material)
-        db.session.commit()
-        balance_minus(material.payed_price)
+        try:
+            material = GranulaMaterial(
+                name = request.get_json().get('name'),
+                type_material = request.get_json().get('type_material'),
+                total_weight = request.get_json().get('total_weight'),
+                waste = request.get_json().get('waste'),
+                weight = request.get_json().get('weight'),
+                price_per_kg = request.get_json().get('price_per_kg'),
+                price_per_kg_s = request.get_json().get('price_per_kg_s'),
+                total_price_d = request.get_json().get('total_price_d'),
+                payed_price_d = request.get_json().get('payed_price_d'),
+                debt_d = request.get_json().get('debt_d'),
+                total_price_s = request.get_json().get('total_price_s'),
+                payed_price_s = request.get_json().get('payed_price_s'),
+                debt_s = request.get_json().get('debt_s'),
+                provider = request.get_json().get('provider'),
+                status = request.get_json().get('status')
+            )
+            db.session.add(material)
+            db.session.commit()
+        except AssertionError as err:
+            return jsonify(msg=f"{str(err)}"), 400
+        balance_minus(material.payed_price_d)
         material_amount = MaterialAmount.query.filter_by(index1=True).first()
         if not material_amount:
             material_amount = MaterialAmount(amount=0, index1=True)
@@ -71,21 +78,25 @@ def material():
             material.waste = request.get_json().get('waste', material.waste)
             material.weight = round(float(material.total_weight) * (1 - float(material.waste) / 100), 2)
             material.price_per_kg = request.get_json().get('price_per_kg', material.price_per_kg)
-            material.total_price = request.get_json().get('total_price', material.total_price)
-            material.payed_price = request.get_json().get('payed_price', material.payed_price)
-            material.debt = round(float(material.total_price) - float(material.payed_price), 2)
+            material.price_per_kg_s = request.get_json().get('price_per_kg_s', material.price_per_kg_s)
+            material.total_price_d = request.get_json().get('total_price_d', material.total_price_d)
+            material.payed_price_d = request.get_json().get('payed_price_d', material.payed_price_d)
+            material.debt_d = request.get_json().get('debt_d', material.debt_d)
+            material.total_price_s = request.get_json().get('total_price_s', material.total_price_s)
+            material.payed_price_s = request.get_json().get('payed_price_s', material.payed_price_s)
+            material.debt_s = request.get_json().get('debt_s', material.debt_s)
             material.provider = request.get_json().get('provider', material.provider)
             db.session.commit()
             balance_minus(extra_sum)
             return jsonify(msg='Success')
-        return jsonify("You are not admin"), 401
+        return jsonify("У вас нет полномочий на это действие"), 401
     elif request.method == 'DELETE':
         if user.role == 'a':
             material = db.get_or_404(GranulaMaterial, id)
             db.session.delete(material)
             db.session.commit()
             return jsonify(msg="Deleted")
-        return jsonify("You are not admin"), 401
+        return jsonify("У вас нет полномочий на это действие"), 401
 
 
 # setka malumot kititish
@@ -100,7 +111,7 @@ def setka():
             db.session.add(setka)
             db.session.commit()
             return jsonify(msg="Created")
-        return jsonify(msg='You have not authority to this action'), 401
+        return jsonify(msg='У вас нет полномочий на это действие'), 401
     elif request.method == 'GET':
         setka = db.session.execute(db.select(Setka).order_by(Setka.date.desc())).scalars()
         return jsonify(setka_schemas.dump(setka))
@@ -110,7 +121,7 @@ def setka():
             db.session.delete(setka)
             db.session.commit()
             return jsonify(msg = 'Deleted')
-        return jsonify("You have not authority to this action"), 401
+        return jsonify("У вас нет полномочий на это действие"), 401
 
 
 # xisobot
@@ -126,11 +137,12 @@ def report():
             "sklad":granula_amount.weight if granula_amount else "На складе недостаточно гранула",
         }
         return jsonify(data)
-    return jsonify(msg="You are not admin"), 401
+    return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
 # client
 @bp.route('/client', methods=['POST', 'GET'])
+@jwt_required()
 def client():
     if request.method=='GET':
         cilent = Client.query.all()
@@ -145,6 +157,7 @@ def client():
 
 # rasxod maqsad
 @bp.route('/expence-intent', methods=['POST', 'GET'])
+@jwt_required()
 def expence_intent():
     if request.method=='GET':
         exp_intent = ExpenceIntent.query.all()
@@ -159,6 +172,7 @@ def expence_intent():
 
 # rasxod user
 @bp.route('/expence-user', methods=['POST', 'GET'])
+@jwt_required()
 def expence_user():
     if request.method == 'GET':
         exp_user = ExpenceUser.query.all()
@@ -170,9 +184,12 @@ def expence_user():
         db.session.commit()
         return jsonify(msg="Success")
 
+
 # rasxod
 @bp.route('/expence', methods=['POST', 'GET'])
+@jwt_required()
 def expence():
+    user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'POST':
         exp = Expence(
             description = request.get_json().get('description'),
@@ -184,9 +201,18 @@ def expence():
         db.session.commit()
         balance_minus(exp.price)
         return jsonify(msg='Created')
-    else:
-        exp = Expence.query.all()
+    elif request.method == 'GET':
+        status = request.args.get('status')
+        exp = Expence.query.filter_by(status=status).all()
         return jsonify(expence_schema.dump(exp))
+    else:
+        if user.role == 'a':
+            id = request.args.get('id')
+            exp = Expence.query.get(id)
+            db.session.delete(exp)
+            db.session.commit()
+            return jsonify(msg="Deleted")
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
 # sklad

@@ -141,7 +141,7 @@ def alyuminy_material():
                 )
                 db.session.add(material)
             db.session.commit()
-            balance_minus(data.get("payed_price_s"))
+            balance_minus(data.get("payed_price_d"))
             return jsonify(msg="Success"), 201
         except AssertionError as err:
             return jsonify(msg=f"{str(err)}"), 400
@@ -201,7 +201,7 @@ def glue_material():
             material = Glue(**data)
             db.session.add(material)
             db.session.commit()
-            balance_minus(data.get("payed_price_s"))
+            balance_minus(data.get("payed_price_d"))
             return jsonify(msg="Success"), 201
         except AssertionError as err:
                 return jsonify(msg=f"{str(err)}"), 400
@@ -279,7 +279,7 @@ def sticker_material():
                 )
                 db.session.add(material)
             db.session.commit()
-            balance_minus(data.get("payed_price_s"))
+            balance_minus(data.get("payed_price_d"))
             return jsonify(msg="Success"), 201
         except AssertionError as err:
                 return jsonify(msg=f"{str(err)}"), 400

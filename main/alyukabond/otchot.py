@@ -21,38 +21,56 @@ def salafan_rasxod(frm, to):
     granula = granula[0][0] if granula[0][0] else 1 
     avg_narx = material[0][0] if material[0][0] else 0 
     salafan_narx = salafan*avg_narx if salafan else 0
-    grn_price_per_kg = (rasxod + salafan_narx) / granula
-    return grn_price_per_kg
+    data = {
+        "salafan":salafan_narx,
+        "grn_rasxod":rasxod
+    }
+    return data
 
 
 # sebestoymost
 @bp.route('/price')
 def alyukabond_price():
-    from_d = request.args.get('from').split('-')
-    to_d = request.args.get('to').split('-')
+    f_date = request.args.get('from')
+    t_date = request.args.get('to')
+    from_d = f_date.split('-')
+    to_d = t_date.split('-')
     d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
     s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
     color1 = request.args.get('color1')
     color2 = request.args.get('color2')
     thkn = float(request.args.get('al_thickness', 0))
     typ = int(request.args.get('type', 0))
+    length = request.args.get('length', 0)
     grn_price = salafan_rasxod(frm=d, to=s)
     rate = ExchangeRate.query.order_by(ExchangeRate.date.desc()).first()
-    alyukabond_quantity = Alyukabond.query.with_entities(func.sum(Alyukabond.quantity)).filter(Alyukabond.date.between(d, s), 
-        Alyukabond.color1_id==color1, Alyukabond.color2_id==color2, Alyukabond.al_thickness==thkn, Alyukabond.type_product==typ).all()
-    aluminy_color1 = Aluminy.query.filter_by(color_id=color1, thickness=thkn).order_by(Aluminy.date.desc()).first()
-    aluminy_color2 = Aluminy.query.filter_by(color_id=color2, thickness=thkn).order_by(Aluminy.date.desc()).first()
-    glue = Glue.query.order_by(Glue.date.desc()).first()
-    sticker = Sticker.query.filter(Sticker.type_sticker==typ).order_by(Sticker.date.desc()).first()
+    query = f"select sum(quantity) from alyukabond where color1_id='{color1}' and color2_id='{color2}' and al_thickness='{thkn}' and list_length='{length}' and date between '{f_date}' and '{t_date}'"
+    alyukabond_quantity = db.session.execute(text(query)).fetchall()
+    aluminy_color1 = Aluminy.query.with_entities(func.sum(Aluminy.price)).filter(Aluminy.color_id==color1, Aluminy.thickness==thkn, Aluminy.date.between(d, s)).all()
+    aluminy_color2 = Aluminy.query.with_entities(func.sum(Aluminy.price)).filter(Aluminy.color_id==color2, Aluminy.thickness==thkn, Aluminy.date.between(d, s)).all()
+    glue = Glue.query.with_entities(func.sum(Glue.total_price_d)).filter(Glue.date.between(d, s)).all()
+    sticker = Sticker.query.with_entities(func.sum(Sticker.price)).filter(Sticker.type_sticker==typ, Sticker.date.between(d, s)).all()
     exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.status!='salafan', Expence.date.between(d, s)).all()
     r = exp[0][0] / rate.rate if exp[0][0] else 0
-    al1 = 1.4 * aluminy_color1.price_per_kg if aluminy_color1 else 0
-    al2 = 1.4 * aluminy_color2.price_per_kg if aluminy_color2 else 0
-    gl = 0.27 * glue.price_per_kg if glue else 0
-    st = 3 * sticker.price_per_surface if sticker else 0
-    grn = 10.3 * (grn_price / rate.rate)
-    rasxod = (al1 + al2 + gl + st + grn) * alyukabond_quantity[0][0] + r
-    return jsonify({"rasxod":rasxod})
+    al1 =  aluminy_color1[0][0] if aluminy_color1[0][0] else 0
+    al2 = aluminy_color2[0][0] if aluminy_color2[0][0] else 0
+    gl =  glue[0][0] if glue[0][0] else 0
+    st = sticker[0][0] if sticker[0][0] else 0
+    grn =  (grn_price["salafan"] / rate.rate)
+    quantity_alyukabond = alyukabond_quantity[0][0] if alyukabond_quantity[0][0] else 0
+    sebistoymost = (al1 + al2 + gl + st + grn + r) / quantity_alyukabond 
+    data = {
+        "aluminy_color1":al1,
+        "aluminy_color2":al2,
+        "glue":gl,
+        "sticker":st,
+        "salafan":grn,
+        "rasxod_salafan":grn_price["grn_rasxod"] / rate.rate,
+        "rasxod_alyukabond":r,
+        "quantity_alyukabond":quantity_alyukabond,
+        "sebistoymost":sebistoymost
+    }
+    return jsonify(data)
 
 
 # xisobot sotib olingan
@@ -179,7 +197,7 @@ def report_debt():
                 }.get(name, None)
                 db.session.add(payed)
                 db.session.commit()
-                balance_minus(data.get('amount_s'))
+                balance_minus(data.get('amount_d'))
                 return jsonify(msg="Success")
             return jsonify(msg="You are entered more then debt")
     else:
@@ -213,7 +231,7 @@ def report_fee():
                 payed = PayedDebt(amount_d=data.get('amount_d'), agreement_num=obj.agreement_num, amount_s=data.get('amount_s'), user=data.get('user'), saled_id = obj.id)
                 db.session.add(payed)
                 db.session.commit()
-                balance_add(data.get('amount_s'))
+                balance_add(data.get('amount_d'))
                 return jsonify(msg="Success")
             return jsonify(msg="You are entered more then debt")
     else:
@@ -249,9 +267,9 @@ def balance():
         s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
         if name == "balance":
             w_t = WriteTransaction.query.all()
-            balance = Balance.query.filter_by(valuta='s').first()
+            balance_d = Balance.query.filter_by(valuta='d').first()
             data = {
-                'balance':balance.amount,
+                'balance_d':balance_d.amount,
                 "transactions":transaction_schemas.dump(w_t)
             }
             return jsonify(data)
@@ -260,7 +278,7 @@ def balance():
             aluminy = AluminyNakladnoy.query.with_entities(func.sum(AluminyNakladnoy.total_price_d)).filter(AluminyNakladnoy.date.between(d, s)).all()
             glue = Glue.query.with_entities(func.sum(Glue.total_price_d)).filter(Glue.date.between(d, s)).all()
             sticker = StickerNakladnoy.query.with_entities(func.sum(StickerNakladnoy.total_price_d)).filter(StickerNakladnoy.date.between(d, s)).all()
-            exp = Expence.query.with_entities(func.sum(Expence.price)).all()
+            exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.date.between(d, s)).all()
             saled_sum = saled[0][0] if saled[0][0] else 0
             aluminy_sum = aluminy[0][0] if aluminy[0][0] else 0
             glue_sum = glue[0][0] if glue[0][0] else 0 
@@ -303,7 +321,7 @@ def transaction():
                         )
                 db.session.add(write)
                 db.session.commit()
-                balance_add(data.get("amount_s"))
+                balance_add(data.get("amount_d"))
             else:
                 write = WriteTransaction(
                         amount_s=data.get('amount_s'),
@@ -314,7 +332,7 @@ def transaction():
                         )
                 db.session.add(write)
                 db.session.commit()
-                balance_minus(data.get("amount_s"))
+                balance_minus(data.get("amount_d"))
             return jsonify(msg='Success')
         else:
             id = request.args.get("transaction_id", None)
