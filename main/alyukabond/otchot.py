@@ -11,6 +11,7 @@ import shutil
 from .utils import *
 from .balance import *
 
+
 def salafan_rasxod(frm, to):
     d = to - timedelta(days=30)
     material = GranulaMaterial.query.with_entities(func.avg(GranulaMaterial.price_per_kg)).filter(GranulaMaterial.date.between(d, to)).all()
@@ -58,7 +59,7 @@ def alyukabond_price():
     st = sticker[0][0] if sticker[0][0] else 0
     grn =  (grn_price["salafan"] / rate.rate)
     quantity_alyukabond = alyukabond_quantity[0][0] if alyukabond_quantity[0][0] else 0
-    sebistoymost = (al1 + al2 + gl + st + grn + r) / quantity_alyukabond 
+    sebistoymost = ((al1 + al2 + gl + st + grn + r) / quantity_alyukabond) / 3 
     data = {
         "aluminy_color1":al1,
         "aluminy_color2":al2,
@@ -71,76 +72,6 @@ def alyukabond_price():
         "sebistoymost":sebistoymost
     }
     return jsonify(data)
-
-
-# xisobot sotib olingan
-@bp.route('/report/purchase')
-@jwt_required()
-def report():
-    user = db.get_or_404(Users, get_jwt_identity())
-    if user.role == 'a':
-        from_d = request.args.get('from').split('-')
-        to_d = request.args.get('to').split('-')
-        fr = request.args.get('filter', None)
-        d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
-        s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
-        if fr is None:
-            aluminy = Aluminy.query.filter(Aluminy.date.between(d, s)).all()
-            glue = Glue.query.filter(Glue.date.between(d, s)).all()
-            sticker = Sticker.query.filter(Sticker.date.between(d, s)).all()
-            salafan = GranulaMaterial.query.filter(GranulaMaterial.date.between(d, s)).all()
-            data = {
-                "aluminy":aluminy_schemas.dump(aluminy),
-                "glue":glue_schemas.dump(glue),
-                "sticker":sticker_schemas.dump(sticker),
-                "salafan":salafan_schema.dump(salafan)
-            }
-        else:
-            objects = {
-                "aluminy":aluminy_schemas.dump(Aluminy.query.filter(Aluminy.date.between(d, s)).all()),
-                "glue":glue_schemas.dump(Glue.query.filter(Glue.date.between(d, s)).all()),
-                "sticker":sticker_schemas.dump(Sticker.query.filter(Sticker.date.between(d, s)).all()),
-                "salafan":salafan_schema.dump(GranulaMaterial.query.filter(GranulaMaterial.date.between(d, s)).all())
-            }.get(fr, None)
-            data = {f"{fr}":objects}
-        return jsonify(data)
-    else:
-        return jsonify(msg="У вас нет полномочий на это действие"), 401
-
-
-# Mahsulot xisobot
-@bp.route('/report/product')
-@jwt_required()
-def report_product():
-    user = db.get_or_404(Users, get_jwt_identity())
-    if user.role == 'a':
-        from_d = request.args.get('from').split('-')
-        to_d = request.args.get('to').split('-')
-        d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
-        s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
-        alyukabond = Alyukabond.query.filter(Alyukabond.date.between(d, s)).all()
-        return jsonify(alyukabond_schemas.dump(alyukabond))
-    else:
-        return jsonify(msg="У вас нет полномочий на это действие"), 401
-
-
-# Sotilgan tovar xisobot
-@bp.route('/report/saled')
-@jwt_required()
-def report_saled():
-    user = db.get_or_404(Users, get_jwt_identity())
-    if user.role == 'a':
-        from_d = request.args.get('from').split('-')
-        to_d = request.args.get('to').split('-')
-        d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
-        s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
-        saled = SaledProduct.query.filter(SaledProduct.date.between(d, s)).all()
-        data = {
-            "saled":saled_product_schema.dump(saled)
-        }
-        return jsonify(data)
-    else:
-        return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
 # Qarzlar xisobot
@@ -285,13 +216,7 @@ def balance():
             sticker_sum = sticker[0][0] if sticker[0][0] else 0 
             expence = exp[0][0] if exp[0][0] else 0
             data = saled_sum - (aluminy_sum + glue_sum + sticker_sum + expence)
-            return jsonify({"profit":[data]})
-        elif name == 'expence':
-            exp = Expence.query.all()
-            return jsonify(expence_schema.dump(exp))
-        elif name == 'total':
-            saled = SaledProduct.query.filter(SaledProduct.date.between(d, s)).all()
-            return jsonify(saled_product_schema.dump(saled))
+            return jsonify([{"profit":data}])
     else:
         return jsonify(msg="У вас нет полномочий на это действие"), 401
 
@@ -304,6 +229,14 @@ def transaction():
         if request.method == 'GET':
             id = request.args.get("transaction_id", None)
             status = request.args.get("status")
+            from_d = request.args.get('from')
+            to_d = request.args.get('to')
+            if from_d and to_d:
+                from_d, to_d = from_d.split('-'), to_d.split('-')
+                d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+                s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+                trs = WriteTransaction.query.filter(WriteTransaction.status==status, WriteTransaction.date.between(d, s)).all()
+                return jsonify(transaction_schemas.dump(trs))
             if id is not None:
                 tr = db.get_or_404(WriteTransaction, id)
                 return jsonify(transaction_schema.dump(tr))

@@ -25,14 +25,13 @@ def make_aluykabond():
         material_id = request.args.get("material_id")
         from_d = request.args.get("from")
         to_d = request.args.get("to") 
-        typ = request.args.get("type")
         color1 = request.args.get("color1")
         color2 = request.args.get("color2")
         thkn = request.args.get("al_thickness")
         sort = request.args.get("sort")
         length = request.args.get("length")
         if typ or color1 or color2 or thkn or from_d or to_d:
-            data = filter_amount(name="alyukabond", type=typ, sort=sort, thickness=thkn, color1=color1, color2=color2,from_d=from_d, to_d=to_d, length=length)
+            data = filter_amount(name="alyukabond", sort=sort, thickness=thkn, color1=color1, color2=color2,from_d=from_d, to_d=to_d, length=length)
             return jsonify(data)
         if material_id is not None:
             return jsonify(alyukabond_schema.dump(Alyukabond.query.get_or_404(material_id)))

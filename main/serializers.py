@@ -131,6 +131,7 @@ class AluminyAmountSerializer(Schema):
     weight = fields.Float(required=True)
 
 al_amount_schema = AluminyAmountSerializer(many=True)
+al_amount_schem = AluminyAmountSerializer()
 
 
 class GlueSerializer(Schema):
@@ -284,6 +285,8 @@ class AlyukabondAmountSerializer(Schema):
     quantity = fields.Integer(required=True)
 
 alyukabond_amount_schema = AlyukabondAmountSerializer(many=True)
+alyukabond_amount_schem = AlyukabondAmountSerializer()
+
 
 
 class AlyukabondSerializer(Schema):

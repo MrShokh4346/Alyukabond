@@ -65,7 +65,8 @@ def users():
             try:
                 user = db.get_or_404(Users, id)
                 user.first_name = data.get('first_name', user.first_name)
-                user.username = data.get('username', user.username)
+                if data.get('username'):
+                    user.username = data.get('username')
                 if data.get('password'):
                     user.password = data.get('password')
                 user.role = data.get('role', user.role)

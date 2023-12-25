@@ -258,27 +258,40 @@ def filter_amount(name=None, type=None, sort=None, thickness=None, color1=None, 
     t = "type_product" if name.count('alyukabond')==1 else f"type_{name.split('_')[0]}"
     c = "color1_id" if name.count('alyukabond')==1 else "color_id"
     thkn = "al_thickness" if name.count('alyukabond')==1 else "thickness"
-    query = f"SELECT * FROM {name} WHERE "   # aluminy_amount, glue_amount, sticker_amount, alyukabond_amount
-    query += f"{t}={type} AND" if type is not None else ''
-    query += f"sort={sort} AND" if sort is not None else ''
+    query = f"SELECT * FROM {name} WHERE"   # aluminy_amount, glue_amount, sticker_amount, alyukabond_amount
+    query += f" {t}='{type}' AND" if type is not None else ''
+    query += f" sort='{sort}' AND" if sort is not None else ''
     query += f" {c}='{color1}' AND" if color1 is not None else ''
     query += f" color2_id='{color2}' AND" if color2 is not None else ''
-    query += f" list_length={length} AND" if length is not None else ''
-    query += f" {thkn}={thickness} AND" if thickness is not None else ''
+    query += f" list_length='{length}' AND" if length is not None else ''
+    query += f" {thkn}='{thickness}' AND" if thickness is not None else ''
     if (from_d and to_d) and len(name.split('_')) == 1:
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
     query = query[:-4]
+    print(query)
     prds = db.session.execute(text(query)).fetchall()
+    print(prds)
     if name in ['alyukabond', 'aluminy', "aluminy_amount", "alyukabond_amount"]:
         data = []
         count = 0
         for prd in prds:
-            if name in ['aluminy', "aluminy_amount"]:
+            if name == 'aluminy':
                 data.append(aluminy_schema.dump(prd))
                 c = Color.query.filter_by(id=prd.color_id).first()
                 data[count]["color"] = color_schema.dump(c)
-            else:
+            elif name == "aluminy_amount":
+                data.append(al_amount_schem.dump(prd))
+                print(data)
+                c = Color.query.filter_by(id=prd.color_id).first()
+                data[count]["color"] = color_schema.dump(c)
+            elif name == "alyukabond":
                 data.append(alyukabond_schema.dump(prd))
+                c1 = Color.query.filter_by(id=prd.color1_id).first()
+                c2 = Color.query.filter_by(id=prd.color2_id).first()
+                data[count]["color1"] = color_schema.dump(c1)
+                data[count]["color2"] = color_schema.dump(c2)
+            elif name == "alyukabond_amount":
+                data.append(alyukabond_amount_schem.dump(prd))
                 c1 = Color.query.filter_by(id=prd.color1_id).first()
                 c2 = Color.query.filter_by(id=prd.color2_id).first()
                 data[count]["color1"] = color_schema.dump(c1)
@@ -286,12 +299,10 @@ def filter_amount(name=None, type=None, sort=None, thickness=None, color1=None, 
             count += 1
     else:
         data = {
-            'aluminy_amount':al_amount_schema.dump(prds),
-            'glue_amount':glue_amount_schemas.dump(prds),
-            'sticker_amount':sticker_amount_schemas.dump(prds),
-            'alyukabond_amount':alyukabond_amount_schema.dump(prds),
-            'sicker':sticker_schemas.dump(prds),
-            'glue':glue_schemas.dump(prds)
+            'glue_amount':glue_amount_schemas.dump(prds) if name == 'glue_amount' else '',
+            'sticker_amount':sticker_amount_schemas.dump(prds) if name == 'sticker_amount' else '',
+            'sticker':sticker_schemas.dump(prds) if name == 'sticker' else '',
+            'glue':glue_schemas.dump(prds) if name == 'glue' else ''
         }.get(name, None)
     return data 
 
@@ -315,10 +326,10 @@ def filter_nakladnoy(name=None, partiya=None, provider=None, from_d=None, to_d=N
 
 
 def filter_saled(agr_num=None, customer=None, saler=None, from_d=None, to_d=None):
-    query = f"SELECT * FROM saled_product WHERE "  
-    query += f"customer like '%{customer}%' AND" if customer is not None else ''
-    query += f"saler like '%{saler}%' AND" if saler is not None else ''
-    query += f" agreement_num='{agr_num}' AND" if agr_num is not None else ''
+    query = f"SELECT * FROM saled_product WHERE"  
+    query += f" customer like '%{customer}%' AND" if customer is not None else ''
+    query += f" saler like '%{saler}%' AND" if saler is not None else ''
+    query += f" agreement_num like '%{agr_num}%' AND" if agr_num is not None else ''
     if (from_d and to_d):
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
     query = query[:-4]

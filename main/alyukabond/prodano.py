@@ -20,7 +20,7 @@ def create_sale():
         saler = request.args.get('saler')
         from_d = request.args.get('from')
         to_d = request.args.get('to')
-        if agr_num or agr_num or customer or from_d or to_d:
+        if agr_num or agr_num or customer or from_d or to_d or saler:
             data = filter_saled(agr_num=agr_num, customer=customer, saler=saler, from_d=from_d, to_d=to_d)
             return jsonify(data)
         if id is not None:

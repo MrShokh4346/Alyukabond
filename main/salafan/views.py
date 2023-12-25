@@ -113,6 +113,14 @@ def setka():
             return jsonify(msg="Created")
         return jsonify(msg='У вас нет полномочий на это действие'), 401
     elif request.method == 'GET':
+        from_d = request.args.get("from")
+        to_d = request.args.get("to")
+        if from_d and to_d:
+            from_d, to_d = from_d.split('-'), to_d.split('-')
+            d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+            s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+            setka = Setka.query.filter(Setka.date.between(d, s)).all()
+            return jsonify(setka_schemas.dump(setka))
         setka = db.session.execute(db.select(Setka).order_by(Setka.date.desc())).scalars()
         return jsonify(setka_schemas.dump(setka))
     elif request.method == 'DELETE':
@@ -203,7 +211,15 @@ def expence():
         return jsonify(msg='Created')
     elif request.method == 'GET':
         status = request.args.get('status')
-        exp = Expence.query.filter_by(status=status).all()
+        from_d = request.args.get("from")
+        to_d = request.args.get("to")
+        if from_d and to_d:
+            from_d, to_d = from_d.split('-'), to_d.split('-')
+            d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+            s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+            exp = Expence.query.filter(Expence.date.between(d, s), Expence.status==status).all()
+            return jsonify(expence_schema.dump(exp))
+        exp = Expence.query.filter_by(status=status).all() if status is not None else Expence.query.all()
         return jsonify(expence_schema.dump(exp))
     else:
         if user.role == 'a':
@@ -255,10 +271,8 @@ def make_granula():
         from_d = request.args.get("from")
         to_d = request.args.get("to")
         if from_d and to_d:
-            print(from_d, to_d)
             query = f"SELECT * FROM granula_poteriya WHERE date BETWEEN '{from_d}' AND '{to_d}'"
             prds = db.session.execute(text(query)).fetchall()
-            print(prds)
             return jsonify(gr_sklad_schema.dump(prds))
         if id is not None:
             return jsonify(gr_sklad_schem.dump(GranulaPoteriya.query.get(id)))

@@ -97,7 +97,7 @@ def alyuminy_material():
     user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'GET':
         material_id = request.args.get("material_id")
-        color = request.args.get("color_id")
+        color = request.args.get("color")
         thkn = request.args.get("thickness")
         from_d = request.args.get("from")
         to_d = request.args.get("to")
