@@ -56,10 +56,10 @@ def material():
                 status = request.get_json().get('status')
             )
             db.session.add(material)
+            balance_minus(material.payed_price_d)
             db.session.commit()
         except AssertionError as err:
             return jsonify(msg=f"{str(err)}"), 400
-        balance_minus(material.payed_price_d)
         material_amount = MaterialAmount.query.filter_by(index1=True).first()
         if not material_amount:
             material_amount = MaterialAmount(amount=0, index1=True)
@@ -70,25 +70,28 @@ def material():
         return jsonify(msg="Success"), 201
     elif request.method == 'PUT' or request.method == 'PATCH':
         if user.role in ['a', 'se']:
-            material = GranulaMaterial.query.get(id)
-            extra_sum = request.get_json().get('payed_price', material.payed_price) - material.payed_price
-            material.name = request.get_json().get('name', material.name)
-            material.type_material = request.get_json().get('type_material', material.type_material)
-            material.total_weight = request.get_json().get('total_weight', material.total_weight)
-            material.waste = request.get_json().get('waste', material.waste)
-            material.weight = round(float(material.total_weight) * (1 - float(material.waste) / 100), 2)
-            material.price_per_kg = request.get_json().get('price_per_kg', material.price_per_kg)
-            material.price_per_kg_s = request.get_json().get('price_per_kg_s', material.price_per_kg_s)
-            material.total_price_d = request.get_json().get('total_price_d', material.total_price_d)
-            material.payed_price_d = request.get_json().get('payed_price_d', material.payed_price_d)
-            material.debt_d = request.get_json().get('debt_d', material.debt_d)
-            material.total_price_s = request.get_json().get('total_price_s', material.total_price_s)
-            material.payed_price_s = request.get_json().get('payed_price_s', material.payed_price_s)
-            material.debt_s = request.get_json().get('debt_s', material.debt_s)
-            material.provider = request.get_json().get('provider', material.provider)
-            db.session.commit()
-            balance_minus(extra_sum)
-            return jsonify(msg='Success')
+            try:
+                material = GranulaMaterial.query.get(id)
+                extra_sum = request.get_json().get('payed_price', material.payed_price) - material.payed_price
+                material.name = request.get_json().get('name', material.name)
+                material.type_material = request.get_json().get('type_material', material.type_material)
+                material.total_weight = request.get_json().get('total_weight', material.total_weight)
+                material.waste = request.get_json().get('waste', material.waste)
+                material.weight = round(float(material.total_weight) * (1 - float(material.waste) / 100), 2)
+                material.price_per_kg = request.get_json().get('price_per_kg', material.price_per_kg)
+                material.price_per_kg_s = request.get_json().get('price_per_kg_s', material.price_per_kg_s)
+                material.total_price_d = request.get_json().get('total_price_d', material.total_price_d)
+                material.payed_price_d = request.get_json().get('payed_price_d', material.payed_price_d)
+                material.debt_d = request.get_json().get('debt_d', material.debt_d)
+                material.total_price_s = request.get_json().get('total_price_s', material.total_price_s)
+                material.payed_price_s = request.get_json().get('payed_price_s', material.payed_price_s)
+                material.debt_s = request.get_json().get('debt_s', material.debt_s)
+                material.provider = request.get_json().get('provider', material.provider)
+                db.session.commit()
+                balance_minus(extra_sum)
+                return jsonify(msg='Success')
+            except AssertionError as err:
+                return jsonify(msg=f"{str(err)}"), 400
         return jsonify("У вас нет полномочий на это действие"), 401
     elif request.method == 'DELETE':
         if user.role == 'a':
@@ -148,49 +151,49 @@ def report():
     return jsonify(msg="У вас нет полномочий на это действие"), 401
 
 
-# client
-@bp.route('/client', methods=['POST', 'GET'])
-@jwt_required()
-def client():
-    if request.method=='GET':
-        cilent = Client.query.all()
-        return jsonify(client_schema.dump(cilent))
-    else:
-        data = request.get_json()
-        cilent = Client(user=data.get('user'))
-        db.session.add(cilent)
-        db.session.commit()
-        return jsonify(msg="Success")
+# # client
+# @bp.route('/client', methods=['POST', 'GET'])
+# @jwt_required()
+# def client():
+#     if request.method=='GET':
+#         cilent = Client.query.all()
+#         return jsonify(client_schema.dump(cilent))
+#     else:
+#         data = request.get_json()
+#         cilent = Client(user=data.get('user'))
+#         db.session.add(cilent)
+#         db.session.commit()
+#         return jsonify(msg="Success")
 
 
-# rasxod maqsad
-@bp.route('/expence-intent', methods=['POST', 'GET'])
-@jwt_required()
-def expence_intent():
-    if request.method=='GET':
-        exp_intent = ExpenceIntent.query.all()
-        return jsonify(expence_intent_schema.dump(exp_intent))
-    else:
-        data = request.get_json()
-        intent = ExpenceIntent(description=data.get('description'))
-        db.session.add(intent)
-        db.session.commit()
-        return jsonify(msg="Success")
+# # rasxod maqsad
+# @bp.route('/expence-intent', methods=['POST', 'GET'])
+# @jwt_required()
+# def expence_intent():
+#     if request.method=='GET':
+#         exp_intent = ExpenceIntent.query.all()
+#         return jsonify(expence_intent_schema.dump(exp_intent))
+#     else:
+#         data = request.get_json()
+#         intent = ExpenceIntent(description=data.get('description'))
+#         db.session.add(intent)
+#         db.session.commit()
+#         return jsonify(msg="Success")
 
 
-# rasxod user
-@bp.route('/expence-user', methods=['POST', 'GET'])
-@jwt_required()
-def expence_user():
-    if request.method == 'GET':
-        exp_user = ExpenceUser.query.all()
-        return jsonify(expence_user_schema.dump(exp_user))
-    else:
-        data = request.get_json()
-        user = ExpenceUser(user=data.get('user'))
-        db.session.add(user)
-        db.session.commit()
-        return jsonify(msg="Success")
+# # rasxod user
+# @bp.route('/expence-user', methods=['POST', 'GET'])
+# @jwt_required()
+# def expence_user():
+#     if request.method == 'GET':
+#         exp_user = ExpenceUser.query.all()
+#         return jsonify(expence_user_schema.dump(exp_user))
+#     else:
+#         data = request.get_json()
+#         user = ExpenceUser(user=data.get('user'))
+#         db.session.add(user)
+#         db.session.commit()
+#         return jsonify(msg="Success")
 
 
 # rasxod
@@ -203,11 +206,15 @@ def expence():
             description = request.get_json().get('description'),
             user = request.get_json().get('user'),
             status = request.get_json().get('status'),
-            price = request.get_json().get('price')
+            price = request.get_json().get('price'),
+            price_s = request.get_json().get('price_s')
         )
-        db.session.add(exp)
-        db.session.commit()
-        balance_minus(exp.price)
+        try:
+            db.session.add(exp)
+            balance_minus(exp.price)
+            db.session.commit()
+        except AssertionError as err:
+            return jsonify(msg=f"{str(err)}"), 400
         return jsonify(msg='Created')
     elif request.method == 'GET':
         status = request.args.get('status')
@@ -235,11 +242,8 @@ def expence():
 @bp.route('/warehouse')
 def warehouse():
     data = {}
-    m_a = MaterialAmount.query.filter_by(index1=True).first()
     g_a = GranulaAmount.query.filter_by(sklad=False).first()
-    data['material_amount'] = m_a.amount if m_a else "На складе недостаточно материал"
-    data['granula_amount'] = g_a.weight if g_a else "На складе недостаточно гранула"
-    return jsonify(data)
+    return jsonify([{"weight":g_a.weight if g_a else 0}])
 
 
 # granula sklad
@@ -276,8 +280,8 @@ def make_granula():
             return jsonify(gr_sklad_schema.dump(prds))
         if id is not None:
             return jsonify(gr_sklad_schem.dump(GranulaPoteriya.query.get(id)))
-        data = {
-            'poteriya':gr_sklad_schema.dump(GranulaPoteriya.query.all()),
-            'amount':gr_amount_schema.dump(GranulaAmount.query.filter_by(sklad=False).first())
-        }
-        return jsonify(data)
+        # data = {
+        #     'poteriya':gr_sklad_schema.dump(GranulaPoteriya.query.all()),
+        #     'amount':gr_amount_schema.dump(GranulaAmount.query.filter_by(sklad=False).first())
+        # }
+        return jsonify(gr_sklad_schema.dump(GranulaPoteriya.query.all()))

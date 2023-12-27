@@ -3,7 +3,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import validates 
 import re 
 from datetime import datetime
-from sqlalchemy.orm import backref
 
 
 class Users(db.Model):
@@ -66,11 +65,10 @@ class GranulaMaterial(db.Model):
     payed_price_s = db.Column(db.Float)
     debt_d = db.Column(db.Float)
     debt_s = db.Column(db.Float)
-
     provider = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
     status = db.Column(db.String)
-    payed_debt = db.relationship('PayedDebt',  backref=db.backref('salafan', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
+    payed_debt = db.relationship('PayedDebt',  back_populates='salafan', cascade='all, delete-orphan', lazy=True)
 
      
 
@@ -90,7 +88,7 @@ class GranulaMaterial(db.Model):
     @validates("total_price")
     def validate_total_pricet_s(self, key, total_price):
         global total
-        if not total_price:
+        if total_price is None:
             raise AssertionError("Требуется общая стоимость")
         total = total_price
         return total_price
@@ -98,7 +96,7 @@ class GranulaMaterial(db.Model):
     @validates("payed_price")
     def validate_payed_price_s(self, key, payed_price):
         global payed
-        if not payed_price:
+        if payed_price is None:
             raise AssertionError("Требуемая оплаченная цена")
         payed = payed_price
         return payed_price
@@ -154,8 +152,10 @@ class Color(db.Model):
     __tablename__ = 'color'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
-    aluminy = db.relationship('Aluminy', back_populates='color')
-    aluminyamount = db.relationship('AluminyAmount', back_populates='color')
+    aluminy = db.relationship('Aluminy', back_populates='color', cascade='all, delete-orphan', lazy=True)
+    aluminyamount = db.relationship('AluminyAmount', back_populates='color', cascade='all, delete-orphan', lazy=True)
+    # alyukabond = db.relationship('Aluminy',  cascade='all, delete-orphan', lazy=True)
+    # alyukabondamount = db.relationship('AluminyAmount',  cascade='all, delete-orphan', lazy=True)
 
 
 # class AluminyThickness(db.Model):
@@ -182,13 +182,13 @@ class AluminyNakladnoy(db.Model):
     provider = db.Column(db.String)
     aluminy = db.relationship('Aluminy', back_populates='nakladnoy')
     date = db.Column(db.DateTime, default=datetime.now())
-    payed_debt = db.relationship('PayedDebt',  backref=db.backref('aluminy_nakladnoy', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
+    payed_debt = db.relationship('PayedDebt',  back_populates='aluminy_nakladnoy', cascade='all, delete-orphan', lazy=True)
 
     total, payed = 0, 0
     @validates("total_price_d")
     def validate_total_pricet_s(self, key, total_price_s):
         global total
-        if not total_price_s:
+        if total_price_s is None:
             raise AssertionError("Требуется общая стоимость")
         total = total_price_s
         return total_price_s
@@ -196,7 +196,7 @@ class AluminyNakladnoy(db.Model):
     @validates("payed_price_d")
     def validate_payed_price_s(self, key, payed_price_s):
         global payed
-        if not payed_price_s:
+        if payed_price_s is None:
             raise AssertionError("Требуемая оплаченная цена")
         payed = payed_price_s
         return payed_price_s
@@ -211,10 +211,10 @@ class AluminyNakladnoy(db.Model):
 
 class Aluminy(db.Model): 
     id = db.Column(db.Integer, primary_key=True)
-    color_id = db.Column(db.Integer, db.ForeignKey("color.id"))
+    color_id = db.Column(db.Integer, db.ForeignKey("color.id", ondelete="SET NULL"))
     color = db.relationship('Color', back_populates='aluminy', lazy=True)
     nakladnoy = db.relationship('AluminyNakladnoy', back_populates='aluminy', lazy=True)
-    nakladnoy_id = db.Column(db.Integer, db.ForeignKey("aluminy_nakladnoy.id"))
+    nakladnoy_id = db.Column(db.Integer, db.ForeignKey("aluminy_nakladnoy.id", ondelete="CASCADE"))
     thickness = db.Column(db.Float, nullable=False)
     list_width = db.Column(db.Float, default=1.22)
     list_length = db.Column(db.Float, default=0)
@@ -227,15 +227,11 @@ class Aluminy(db.Model):
 
     @validates("price_per_kg")
     def validate_price_per_kg(self, key, price):
-        if not price:
+        if price is None:
             raise AssertionError("Price required")
         return price
         
-    @validates("color_id")
-    def validate_type_aluminy(self, key, color):
-        if not color:
-            raise AssertionError("Color required")
-        return color
+
         
     @validates("thickness")
     def validate_thickness(self, key, thickness):
@@ -246,7 +242,7 @@ class Aluminy(db.Model):
 
 class AluminyAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    color_id = db.Column(db.Integer, db.ForeignKey("color.id"))
+    color_id = db.Column(db.Integer, db.ForeignKey("color.id", ondelete="SET NULL"))
     color = db.relationship('Color',   back_populates='aluminyamount', lazy=True)
     thickness = db.Column(db.Float, nullable=False)
     width = db.Column(db.Float, default=1.22)  # m
@@ -271,11 +267,11 @@ class Glue(db.Model):
     debt_s = db.Column(db.Float)
     provider = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
-    payed_debt = db.relationship('PayedDebt',  backref=db.backref('glue', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
+    payed_debt = db.relationship('PayedDebt',  back_populates='glue', cascade='all, delete-orphan', lazy=True)
 
     @validates("thickness")
     def validate_thickness(self, key, thickness):
-        if not thickness:
+        if thickness is None:
             raise AssertionError("Требуемая толщина")
         return thickness
 
@@ -283,7 +279,7 @@ class Glue(db.Model):
     @validates("total_price_d")
     def validate_total_pricet_s(self, key, total_price_s):
         global total
-        if not total_price_s:
+        if total_price_s is None:
             raise AssertionError("Требуется общая стоимость")
         total = total_price_s
         return total_price_s
@@ -291,7 +287,7 @@ class Glue(db.Model):
     @validates("payed_price_d")
     def validate_payed_price_s(self, key, payed_price_s):
         global payed
-        if not payed_price_s:
+        if payed_price_s is None:
             raise AssertionError("Требуемая оплаченная цена")
         payed = payed_price_s
         return payed_price_s
@@ -325,31 +321,31 @@ class StickerNakladnoy(db.Model):
     provider = db.Column(db.String)
     sticker = db.relationship('Sticker', back_populates='nakladnoy')
     date = db.Column(db.DateTime, default=datetime.now())
-    payed_debt = db.relationship('PayedDebt',  backref=db.backref('sticker_nakladnoy', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
+    payed_debt = db.relationship('PayedDebt',  back_populates='sticker_nakladnoy', cascade='all, delete-orphan', lazy=True)
 
     total, payed = 0, 0
     @validates("total_price_d")
-    def validate_total_pricet_s(self, key, total_price_s):
+    def validate_total_pricet_s(self, key, total_price_d):
         global total
-        if not total_price_s:
+        if total_price_d is None:
             raise AssertionError("Требуется общая стоимость")
-        total = total_price_s
-        return total_price_s
+        total = total_price_d
+        return total_price_d
 
     @validates("payed_price_d")
-    def validate_payed_price_s(self, key, payed_price_s):
+    def validate_payed_price_s(self, key, payed_price_d):
         global payed
-        if not payed_price_s:
+        if payed_price_d is None:
             raise AssertionError("Требуемая оплаченная цена")
-        payed = payed_price_s
-        return payed_price_s
+        payed = payed_price_d
+        return payed_price_d
     
     @validates("debt_d")
-    def validate_debt_s(self, key, debt_s):
+    def validate_debt_s(self, key, debt_d):
         global total, payed
-        if debt_s != total - payed:
+        if debt_d != total - payed:
             raise AssertionError("Сумма долга и уплаченная цена не равны общей сумме")
-        return debt_s
+        return debt_d
 
 
 class Sticker(db.Model):
@@ -364,20 +360,20 @@ class Sticker(db.Model):
     partiya = db.Column(db.Integer)
     date = db.Column(db.DateTime)
     nakladnoy = db.relationship('StickerNakladnoy', back_populates='sticker', lazy=True)
-    nakladnoy_id = db.Column(db.Integer, db.ForeignKey("sticker_nakladnoy.id"))
+    nakladnoy_id = db.Column(db.Integer, db.ForeignKey("sticker_nakladnoy.id", ondelete="CASCADE"))
 
     @validates("type_sticker")
     def validate_type_sticker(self, key, type_sticker):
         if not type_sticker:
-            raise AssertionError("Type sticker required")
+            raise AssertionError("Требуемый тип наклейка")
         if type_sticker not in [100, 150, 450]:
-            raise AssertionError('Type sticker type shoude be (100/150/450)')
+            raise AssertionError('Тип продукта должен быть одним из этих (100/150/450)')
         return type_sticker
     
     @validates("price_per_surface")
     def validate_total_pricet_s(self, key, price):
         if not price:
-            raise AssertionError("Price required")
+            raise AssertionError("Требуемая цена")
         return price
     
 
@@ -393,10 +389,11 @@ class Alyukabond(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     size = db.Column(db.String)
-    type_product = db.Column(db.Integer, nullable=False)
+    type_product = db.Column(db.Integer)
+    type_sticker = db.Column(db.Integer)
     sort = db.Column(db.String)
-    color1_id = db.Column(db.Integer, db.ForeignKey("color.id"))
-    color2_id = db.Column(db.Integer, db.ForeignKey("color.id"))
+    color1_id = db.Column(db.Integer, db.ForeignKey("color.id", ondelete="SET NULL"))
+    color2_id = db.Column(db.Integer, db.ForeignKey("color.id", ondelete="SET NULL"))
     color1 = db.relationship('Color', foreign_keys=[color1_id])
     color2 = db.relationship('Color', foreign_keys=[color2_id])
     list_length = db.Column(db.Float)
@@ -407,7 +404,7 @@ class Alyukabond(db.Model):
     provider = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
 
-    @validates("type_product")
+    @validates("type_sticker")
     def validate_type_product(self, key, type_product):
         if not type_product:
             raise AssertionError("Требуемый тип продукта")
@@ -441,10 +438,15 @@ class PayedDebt(db.Model):
     amount_s = db.Column(db.Float)
     user = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
+    salafan = db.relationship('GranulaMaterial', back_populates='payed_debt')
     salafan_id = db.Column(db.Integer, db.ForeignKey("granula_material.id", ondelete='CASCADE'))
+    saledproduct = db.relationship('SaledProduct', back_populates='payed_debt')
     saled_id = db.Column(db.Integer, db.ForeignKey("saled_product.id", ondelete='CASCADE'))
+    aluminy_nakladnoy = db.relationship('AluminyNakladnoy', back_populates='payed_debt')
     aluminy_nakladnoy_id = db.Column(db.Integer, db.ForeignKey("aluminy_nakladnoy.id", ondelete='CASCADE'))
+    glue = db.relationship('Glue', back_populates='payed_debt')
     glue_id = db.Column(db.Integer, db.ForeignKey("glue.id", ondelete='CASCADE'))
+    sticker_nakladnoy = db.relationship('StickerNakladnoy', back_populates='payed_debt')
     sticker_nakladnoy_id = db.Column(db.Integer, db.ForeignKey("sticker_nakladnoy.id", ondelete='CASCADE'))
 
 
@@ -453,10 +455,11 @@ class AlyukabondAmount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     size = db.Column(db.String)
-    type_product = db.Column(db.Integer, nullable=False)
+    type_product = db.Column(db.Integer)
+    type_sticker = db.Column(db.Integer)
     sort = db.Column(db.String)
-    color1_id = db.Column(db.Integer, db.ForeignKey("color.id"))
-    color2_id = db.Column(db.Integer, db.ForeignKey("color.id"))
+    color1_id = db.Column(db.Integer, db.ForeignKey("color.id", ondelete="SET NULL"))
+    color2_id = db.Column(db.Integer, db.ForeignKey("color.id", ondelete="SET NULL"))
     color1 = db.relationship('Color', foreign_keys=[color1_id])
     color2 = db.relationship('Color', foreign_keys=[color2_id])
     list_length = db.Column(db.Float)
@@ -464,14 +467,16 @@ class AlyukabondAmount(db.Model):
     al_thickness = db.Column(db.Float)
     product_thickness = db.Column(db.Float)
     quantity = db.Column(db.Integer)
-    product_id = db.relationship('SelectedProduct', backref='product')
+    selected = db.relationship('SelectedProduct', back_populates='alyukabond', cascade='all, delete-orphan', lazy=True)
     
 
 class SelectedProduct(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    saled_id = db.Column(db.Integer, db.ForeignKey("saled_product.id")) 
+    saledproduct = db.relationship('SaledProduct',  back_populates='products')
+    saled_id = db.Column(db.Integer, db.ForeignKey("saled_product.id",  ondelete="CASCADE")) 
     quantity = db.Column(db.Integer)
-    product_id = db.Column(db.Integer, db.ForeignKey("alyukabond_amount.id")) 
+    alyukabond = db.relationship('AlyukabondAmount',  back_populates='selected')
+    product_id = db.Column(db.Integer, db.ForeignKey("alyukabond_amount.id", ondelete="SET NULL")) 
 
 
 class SaledProduct(db.Model):
@@ -488,8 +493,8 @@ class SaledProduct(db.Model):
     debt_d = db.Column(db.Float)
     debt_s = db.Column(db.Float)
     date = db.Column(db.DateTime, default=datetime.now())
-    products = db.relationship('SelectedProduct',  backref=db.backref('saledproduct', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
-    payed_debt = db.relationship('PayedDebt',  backref=db.backref('saledproduct', passive_deletes=True), cascade='all, delete-orphan', lazy=True)
+    products = db.relationship('SelectedProduct',  back_populates='saledproduct', cascade='all, delete-orphan', lazy=True)
+    payed_debt = db.relationship('PayedDebt',  back_populates='saledproduct', cascade='all, delete-orphan', lazy=True)
 
     @validates("agreement_num")
     def validate_agreement_num(self, key, agreement_num):
@@ -501,7 +506,7 @@ class SaledProduct(db.Model):
     @validates("total_price_d")
     def validate_total_pricet_s(self, key, total_price_s):
         global total
-        if not total_price_s:
+        if total_price_s is None:
             raise AssertionError("Требуется общая стоимость")
         total = total_price_s
         return total_price_s
@@ -509,7 +514,7 @@ class SaledProduct(db.Model):
     @validates("payed_price_d")
     def validate_payed_price_s(self, key, payed_price_s):
         global payed
-        if not payed_price_s:
+        if payed_price_s is None:
             raise AssertionError("Требуемая оплаченная цена")
         payed = payed_price_s
         return payed_price_s
@@ -522,19 +527,19 @@ class SaledProduct(db.Model):
         return debt_s
 
 
-class Client(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user = db.Column(db.String)
+# class Client(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     user = db.Column(db.String)
 
     
-class ExpenceIntent(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    description = db.Column(db.String)
+# class ExpenceIntent(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     description = db.Column(db.String)
 
 
-class ExpenceUser(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user = db.Column(db.String)
+# class ExpenceUser(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     user = db.Column(db.String)
 
 
 class Expence(db.Model):
@@ -543,6 +548,7 @@ class Expence(db.Model):
     user = db.Column(db.String)
     description = db.Column(db.String)
     price = db.Column(db.Float)
+    price_s = db.Column(db.Float)
     date = db.Column(db.DateTime, default=datetime.now())
 
     @validates('user')

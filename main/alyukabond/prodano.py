@@ -9,7 +9,7 @@ from .balance import *
 
 
 # mahsulot sotish
-@bp.route('/create-sale', methods=['GET', 'POST', 'PUT', 'PATCH'])
+@bp.route('/create-sale', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
 @jwt_required()
 def create_sale():
     user = db.get_or_404(Users, get_jwt_identity())
@@ -24,8 +24,8 @@ def create_sale():
             data = filter_saled(agr_num=agr_num, customer=customer, saler=saler, from_d=from_d, to_d=to_d)
             return jsonify(data)
         if id is not None:
-            products = SelectedProduct.query.filter_by(saled_id=id).all()
-            return jsonify(selected_product_schema.dump(products))
+            products = SaledProduct.query.get(id)
+            return jsonify(saled_product_schem.dump(products))
         sales = SaledProduct.query.all()
         return jsonify(saled_product_schema.dump(sales))
     elif request.method == 'POST':
@@ -51,7 +51,7 @@ def create_sale():
                 if prd.quantity < product['quantity']:
                     # db.session.delete(saled)
                     # db.session.commit()
-                    return jsonify(msg="На складе недостаточно продукт данного типа")
+                    return jsonify(msg="На складе недостаточно продукт данного типа"), 400
                 prd.quantity -= product['quantity']
                 selected = SelectedProduct(saled_id=saled.id, product_id=prd.id, quantity=product['quantity'])
                 db.session.add(selected)
@@ -84,11 +84,18 @@ def create_sale():
         return jsonify(msg="У вас нет полномочий на это действие"), 401
     elif request.method == 'DELETE':
         if user.role == 'a':
+            id = request.args.get('id')
             material = db.get_or_404(SaledProduct, id)
             db.session.delete(material)
             db.session.commit()
             return jsonify(msg="Deleted")
         return jsonify(msg="У вас нет полномочий на это действие"), 401
+
+
+@bp.route('/nakladnoy-products/<int:id>')
+def nakladnoy_products(id):
+    products = SelectedProduct.query.filter_by(saled_id=id).all()
+    return jsonify(selected_product_schema.dump(products))
 
 
 # update prodano

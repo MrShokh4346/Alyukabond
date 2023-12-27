@@ -17,6 +17,7 @@ def warehouse(name):
     sort = request.args.get("sort")
     color1 = request.args.get("color1")
     color2 = request.args.get("color2")
+    color2 = 1 if turi == '1' else color2
     thkn = request.args.get("thickness")
     length = request.args.get("length")
     data = {

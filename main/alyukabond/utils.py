@@ -44,18 +44,18 @@ def update_aluminy_amount(material:Aluminy=None, thickness=None, color=None, lis
 def add_glue_amount(thickness=None, width=1.22, length=0, roll_weight=0, quantity=1):
     amount = GlueAmount.query.filter_by(index1=True).first()
     if not amount:
-        amount = GlueAmount(surface = 0, weight = 0)
+        amount = GlueAmount(surface = 0, thickness=thickness, weight = 0)
         db.session.add(amount)
         # db.session.commit()
     surface = length * quantity * width
     amount.surface += surface
-    amount.weight += roll_weight 
+    amount.weight += roll_weight * 1000
     db.session.commit()
 
 
 def update_glue_amount(material:Glue=None, thickness=None, length=None, width=1.22, roll_weight=0, quantity=0):
     extra_length = length - material.length 
-    extra_weight = roll_weight - material.weight
+    extra_weight = (roll_weight - material.weight) * 1000
     extra_quantity = quantity - material.quantity 
     amount = GlueAmount.query.filter_by(index1=True).first()
     # amount1 = GlueAmount.query.filter_by(thickness=thickness).first()
@@ -112,12 +112,12 @@ def update_sticker_amount(material:Sticker=None,type=None, length=None, width=1.
     return surface
 
 
-def add_alyukabond_amount(type=None, sort=None, color1=None, color2=None, length=None, al_thickness=None, product_thickness=None, quantity=1):
-    amount = AlyukabondAmount.query.filter_by(type_product = type, sort = sort, color1_id = color1, color2_id = color2,
-            list_length = length, al_thickness = al_thickness, product_thickness = product_thickness).first()
+def add_alyukabond_amount(type=None, type_product=None, sort=None, color1=None, color2=None, length=None, al_thickness=None, product_thickness=None, quantity=1):
+    amount = AlyukabondAmount.query.filter_by(type_sticker = type, sort = sort, color1_id = color1, color2_id = color2,
+            list_length = length, al_thickness = al_thickness, product_thickness = product_thickness, type_product=type_product).first()
     if not amount:
-        amount = AlyukabondAmount(type_product = type, sort = sort, color1_id = color1, color2_id = color2, list_length = length,
-                        al_thickness = al_thickness, product_thickness = product_thickness, quantity=0)
+        amount = AlyukabondAmount(type_sticker = type, sort = sort, color1_id = color1, color2_id = color2, list_length = length,
+                        al_thickness = al_thickness, product_thickness = product_thickness, type_product=type_product,  quantity=0)
         db.session.add(amount)
         db.session.commit()
     amount.quantity += quantity
@@ -209,6 +209,12 @@ def update_alyukabond_amount(material:Alyukabond=None, type=None, sort=None, col
 
 
 def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, length=None, width=None, miqdor=1):
+    ogirlik = {
+        'алюмина':1.4 * length/2.44,
+        'клея':0.27 * length/2.44,
+        'гранула':10.3 * length/2.44,
+        "наклейка":0
+    }
     for obj in ['алюмина', 'наклейка', 'клея', 'гранула']:
         amount = {
             'алюмина': AluminyAmount.query.filter_by(color_id=rangi1, thickness=qalinligi).first(),
@@ -221,15 +227,10 @@ def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, length=None, widt
             "наклейка":length * (width + 0.02),
             "клея":length * (width + 0.06)
         }.get(obj, False)
-        weight = {
-            'алюмина':(length * (width + 0.02) * 1.4)/3 ,
-            "клея":(length * (width + 0.06) * 0.27)/3,
-            "гранула":10.3
-        }.get(obj, False)
         aluminy2 = AluminyAmount.query.filter_by(color_id=rangi2, thickness=qalinligi).first() if obj == 'алюмина' else None
         if amount is not None and aluminy2 is not None and aluminy2.surface > yuza * miqdor:
             aluminy2.surface -= yuza * miqdor
-            aluminy2.weight -= weight * miqdor
+            aluminy2.weight -=  ogirlik[obj] * miqdor
         elif aluminy2 is None and obj == 'алюмина':
             raise AssertionError(f"На складе недостаточно {obj} данного типа")
 
@@ -240,8 +241,8 @@ def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, length=None, widt
                 else:
                     raise AssertionError(f"На складе недостаточно {obj} данного типа")
             if obj!='наклейка':
-                if amount.weight and (amount.weight > weight * miqdor):
-                    amount.weight -= weight * miqdor
+                if amount.weight and (amount.weight >  ogirlik[obj] * miqdor):
+                    amount.weight -=  ogirlik[obj] * miqdor
                 else:
                     raise AssertionError(f"На складе недостаточно {obj} данного типа")
             msg="success"
@@ -268,9 +269,7 @@ def filter_amount(name=None, type=None, sort=None, thickness=None, color1=None, 
     if (from_d and to_d) and len(name.split('_')) == 1:
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
     query = query[:-4]
-    print(query)
     prds = db.session.execute(text(query)).fetchall()
-    print(prds)
     if name in ['alyukabond', 'aluminy', "aluminy_amount", "alyukabond_amount"]:
         data = []
         count = 0
@@ -304,6 +303,9 @@ def filter_amount(name=None, type=None, sort=None, thickness=None, color1=None, 
             'sticker':sticker_schemas.dump(prds) if name == 'sticker' else '',
             'glue':glue_schemas.dump(prds) if name == 'glue' else ''
         }.get(name, None)
+        if name=="glue_amount":
+            for i in range(len(data)):
+                data[i]["weight"] = round(data[i]["weight"] / 1000, 3) 
     return data 
 
 
@@ -329,7 +331,7 @@ def filter_saled(agr_num=None, customer=None, saler=None, from_d=None, to_d=None
     query = f"SELECT * FROM saled_product WHERE"  
     query += f" customer like '%{customer}%' AND" if customer is not None else ''
     query += f" saler like '%{saler}%' AND" if saler is not None else ''
-    query += f" agreement_num like '%{agr_num}%' AND" if agr_num is not None else ''
+    query += f" agreement_num='{agr_num}' AND"if agr_num is not None else ''
     if (from_d and to_d):
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
     query = query[:-4]

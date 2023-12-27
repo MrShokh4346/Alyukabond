@@ -27,10 +27,11 @@ def make_aluykabond():
         to_d = request.args.get("to") 
         color1 = request.args.get("color1")
         color2 = request.args.get("color2")
-        thkn = request.args.get("al_thickness")
+        color2 = 1 if color2 is None else color2
+        thkn = request.args.get("thickness")
         sort = request.args.get("sort")
         length = request.args.get("length")
-        if typ or color1 or color2 or thkn or from_d or to_d:
+        if color1 or thkn or from_d or to_d:
             data = filter_amount(name="alyukabond", sort=sort, thickness=thkn, color1=color1, color2=color2,from_d=from_d, to_d=to_d, length=length)
             return jsonify(data)
         if material_id is not None:
@@ -40,34 +41,47 @@ def make_aluykabond():
     elif request.method == 'POST':
         try:
             data = request.get_json()
-            turi = data.get('type_product')
+            turi = data.get('type_sticker')
             rangi1 = data.get('color1_id')
             rangi2 = data.get('color2_id', None)
             qalinligi = data.get('al_thickness')
             length = data.get('list_length') 
             width = data.get('list_width', 1.22)
-            
             sort = request.get_json().get('sort')
             miqdor = request.get_json().get('quantity')
+            rangi2 = 1 if data.get('type_product') == 1 else rangi2
             msg = check(turi=turi, rangi1=rangi1, rangi2=rangi2, qalinligi=qalinligi, length=length, width=width, miqdor=miqdor)
             if msg == 'success':
-                if data.get("type"):
-                    del data["type"] 
-                alyukabond = Alyukabond(**data)
+                alyukabond = Alyukabond(
+                    name = data.get('name'),
+                    size = data.get('size'),
+                    type_product = data.get('type_product'),
+                    type_sticker = data.get('type_sticker'),
+                    sort = data.get('sort'),
+                    color1_id = data.get('color1_id'),
+                    color2_id = rangi2,
+                    list_length = data.get('list_length'),
+                    list_width = data.get('list_width'),
+                    al_thickness = data.get('al_thickness'),
+                    product_thickness = data.get('product_thickness'),
+                    quantity = data.get('quantity'),
+                    provider = data.get('provider')
+                )                    
                 db.session.add(alyukabond)
-                add_alyukabond_amount(type=turi, color1=rangi1, color2=rangi2, sort=sort, length=data.get('list_length'), al_thickness=qalinligi, product_thickness=data.get('product_thickness'), quantity=miqdor)
+                db.session.commit()
+                add_alyukabond_amount(type=turi, type_product=data.get('type_product'), color1=rangi1, color2=rangi2, sort=sort, length=data.get('list_length'), al_thickness=qalinligi, product_thickness=data.get('product_thickness'), quantity=miqdor)
                 return jsonify(msg='Success')
             else:
                 return jsonify(msg=msg)
         except AssertionError as err:
-                return jsonify(msg=f"{str(err)}"), 400
+            return jsonify(msg=f"{str(err)}"), 400
     elif request.method == 'PUT' or request.method == 'PATCH':
         if user.role in ['a', 'se']:
             data = request.get_json()
             material_id = request.args.get('material_id')
             try:
                 material = db.get_or_404(Alyukabond, material_id)
-                update_alyukabond_amount(material=material, type=data.get('type_product', material.type_product), sort=data.get('sort', material.sort), color1=data.get('color1', material.color1),
+                update_alyukabond_amount(material=material, type=data.get('type_sticker', material.type_sticker), sort=data.get('sort', material.sort), color1=data.get('color1', material.color1),
                     color2=data.get('color2', material.color2), length=data.get('list_length', material.list_length), width=data.get('list_width', material.list_width), al_thickness=data.get('al_thickness', material.al_thickness),
                     product_thickness=data.get('product_thickness', material.product_thickness), quantity=data.get('quantity', material.quantity))
                 material.name = data.get('name', material.name)

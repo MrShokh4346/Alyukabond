@@ -20,7 +20,12 @@ def color():
         return jsonify(colors_schema.dump(colors))
     elif request.method == 'POST':
         data = request.get_json()
-        color = Color(name=data.get('name'))
+        rang = data.get('name').upper()
+        cr = Color.query.all()
+        for c in cr:
+            if c.name == rang:
+                return jsonify({"msg":"Этот цвет уже существует"})
+        color = Color(name=rang)
         db.session.add(color)
         db.session.commit()
         return jsonify(msg="Success")
@@ -97,7 +102,7 @@ def alyuminy_material():
     user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'GET':
         material_id = request.args.get("material_id")
-        color = request.args.get("color")
+        color = request.args.get("color_id")
         thkn = request.args.get("thickness")
         from_d = request.args.get("from")
         to_d = request.args.get("to")
@@ -140,8 +145,8 @@ def alyuminy_material():
                     date = nakladnoy.date
                 )
                 db.session.add(material)
-            db.session.commit()
             balance_minus(data.get("payed_price_d"))
+            db.session.commit()
             return jsonify(msg="Success"), 201
         except AssertionError as err:
             return jsonify(msg=f"{str(err)}"), 400
@@ -200,8 +205,8 @@ def glue_material():
             add_glue_amount(thickness=data.get("thickness"), width=data.get("width", 1.22), length=data.get("length"), roll_weight=data.get("weight"), quantity=data.get("quantity"))
             material = Glue(**data)
             db.session.add(material)
-            db.session.commit()
             balance_minus(data.get("payed_price_d"))
+            db.session.commit()
             return jsonify(msg="Success"), 201
         except AssertionError as err:
                 return jsonify(msg=f"{str(err)}"), 400
@@ -209,14 +214,16 @@ def glue_material():
         if user.role in ['a', 'se']:
             try:
                 data = request.get_json()
+                weight = data.get("weight") * 1000 if data.get("weight") else material.weight
+                del data['weight']
                 material = Glue.query.get(id)
                 update_glue_amount(material=material, thickness=data.get('thickness', material.thickness), length=data.get('length', material.length),
-                     width=data.get('width', material.width), roll_weight=data.get('weight', material.weight), quantity=data.get('quantity', material.quantity))
+                     width=data.get('width', material.width), roll_weight=weight, quantity=data.get('quantity', material.quantity))
                 material.thickness = data.get('thickness', material.thickness)
                 material.width = data.get('width', material.width)
                 material.length = data.get('length', material.length)
                 material.quantity = data.get('quantity', material.quantity)
-                material.weight = data.get('weight', material.weight)
+                material.weight = weight
                 material.price_per_kg = data.get('price_per_kg', material.price_per_kg)
                 material.provider = data.get('provider', material.provider)
                 db.session.commit()
@@ -274,27 +281,28 @@ def sticker_material():
                     surface = surface,
                     price_per_surface = obj.get('price_per_surface'),
                     price = obj.get('price'),
+                    partiya = nakladnoy.partiya,
                     nakladnoy_id = nakladnoy.id,
                     date=nakladnoy.date
                 )
                 db.session.add(material)
-            db.session.commit()
             balance_minus(data.get("payed_price_d"))
+            db.session.commit()
             return jsonify(msg="Success"), 201
         except AssertionError as err:
-                return jsonify(msg=f"{str(err)}"), 400
+            return jsonify(msg=f"{str(err)}"), 400
     elif request.method == 'PUT' or request.method == 'PATCH':
         if user.role in ['a', 'se']:
             data = request.get_json()
             try:
-                material = Sticker.query.get(id)
+                material_id = request.args.get("material_id")
+                material = Sticker.query.get(material_id)
                 surface = update_sticker_amount(material=material,type=data.get('type_sticker', material.type_sticker), length=data.get('length', material.length), width=data.get('width', material.width),  quantity=data.get('quantity', material.quantity))
                 material.type_sticker = data.get('type_sticker', material.type_sticker)
                 material.width = data.get('width', material.width)
                 material.length = data.get('length', material.length)
                 material.quantity = data.get('quantity', material.quantity)
                 material.surface += surface
-                material.provider = data.get('provider', material.provider)
                 db.session.commit()
                 return jsonify(msg='Success')
             except AssertionError as err:
@@ -345,6 +353,8 @@ def granula_otxod():
         makaron = GranulaOtxod(
             weight = data.get('weight')
         )
+        granula = GranulaAmount.query.filter_by(sklad=False).first()
+        granula.weight -= makaron.weight
         db.session.add(makaron)
         db.session.commit()
         return jsonify(msg="Created")

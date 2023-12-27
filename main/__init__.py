@@ -55,7 +55,7 @@ def create_app():
     from main.alyukabond import bp as al_bp
     app.register_blueprint(al_bp, url_prefix="/alyukabond/v1")
 
-    from main.models import Users
+    from main.models import Users, Color
     @app.cli.command('adduser')
     def adduser():
         first_name = input("name: ")
@@ -63,8 +63,10 @@ def create_app():
         password = input("password: ")
         role = input("role (a/se/e): ")
         user = Users(first_name=first_name, username=username, role=role, password=password)
+        color = Color(name="БЕСЦВЕТНЫЙ")
         with app.app_context():
             db.session.add(user)
+            db.session.add(color)
             db.session.commit()
 
 
