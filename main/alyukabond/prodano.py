@@ -36,6 +36,7 @@ def create_sale():
                 customer = data.get('customer'),
                 saler = data.get('saler'),
                 agreement_num = data.get('agreement_num'),
+                vehicle_number = data.get('vehicle_number'),
                 total_price_d = data.get('total_price_d'),
                 total_price_s = data.get('total_price_s'),
                 payed_price_d = data.get('payed_price_d'),

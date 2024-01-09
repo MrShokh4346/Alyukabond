@@ -398,6 +398,7 @@ class Alyukabond(db.Model):
     color2 = db.relationship('Color', foreign_keys=[color2_id])
     list_length = db.Column(db.Float)
     list_width = db.Column(db.Float, default=1.22)
+    surface = db.Column(db.Float)
     al_thickness = db.Column(db.Float, nullable=False)
     product_thickness = db.Column(db.Float)
     quantity = db.Column(db.Integer)
@@ -545,6 +546,7 @@ class SaledProduct(db.Model):
 class Expence(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String)
+    seb = db.Column(db.Boolean)
     user = db.Column(db.String)
     description = db.Column(db.String)
     price = db.Column(db.Float)

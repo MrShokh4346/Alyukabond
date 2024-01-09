@@ -106,7 +106,7 @@ def alyuminy_material():
         thkn = request.args.get("thickness")
         from_d = request.args.get("from")
         to_d = request.args.get("to")
-        if color or thkn or from_d or to_d:
+        if color or thkn or (from_d and to_d):
             data = filter_amount(name="aluminy", thickness=thkn, color1=color, from_d=from_d, to_d=to_d)
             return jsonify(data)
         elif material_id is not None:
@@ -152,7 +152,7 @@ def alyuminy_material():
             return jsonify(msg=f"{str(err)}"), 400
     elif request.method == 'PUT' or request.method == 'PATCH':
         id = request.args.get('material_id')
-        if user.role in ['a', 'se']:
+        if user.role in ['a']:
             data = request.get_json()
             try:
                 material = Aluminy.query.get(id)
@@ -211,7 +211,7 @@ def glue_material():
         except AssertionError as err:
                 return jsonify(msg=f"{str(err)}"), 400
     elif request.method == 'PUT' or request.method == 'PATCH':
-        if user.role in ['a', 'se']:
+        if user.role in ['a']:
             try:
                 data = request.get_json()
                 weight = data.get("weight") * 1000 if data.get("weight") else material.weight
@@ -292,7 +292,7 @@ def sticker_material():
         except AssertionError as err:
             return jsonify(msg=f"{str(err)}"), 400
     elif request.method == 'PUT' or request.method == 'PATCH':
-        if user.role in ['a', 'se']:
+        if user.role in ['a']:
             data = request.get_json()
             try:
                 material_id = request.args.get("material_id")

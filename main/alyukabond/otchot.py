@@ -16,7 +16,7 @@ def salafan_rasxod(frm, to):
     d = to - timedelta(days=30)
     material = GranulaMaterial.query.with_entities(func.avg(GranulaMaterial.price_per_kg)).filter(GranulaMaterial.date.between(d, to)).all()
     granula = GranulaPoteriya.query.with_entities(func.sum(GranulaPoteriya.granula_weight), func.sum(GranulaPoteriya.material_weight)).filter(GranulaPoteriya.date.between(frm, to)).all()
-    exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.status=='salafan', Expence.date.between(frm, to)).all()
+    exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.status=='salafan', Expence.seb==True, Expence.date.between(frm, to)).all()
     rasxod = exp[0][0] if exp[0][0] else 0
     salafan = granula[0][1] if granula[0][1] else 0 
     granula = granula[0][0] if granula[0][0] else 1 
@@ -28,6 +28,17 @@ def salafan_rasxod(frm, to):
         "grn_rasxod":rasxod
     }
     return data
+
+
+# granula sebistoimost
+@bp.route('/granula-seb')
+def granula_seb():
+    from_d = request.args.get('from').split('-')
+    to_d = request.args.get('to').split('-')
+    d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+    s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+    data = salafan_rasxod(d, s)
+    return jsonify([{"granula_seb":data["grn_kg_narx"]}])
 
 
 # sebestoymost
@@ -49,11 +60,12 @@ def alyukabond_price():
     grnl = salafan_rasxod(frm=d, to=s)
 
     # bir oyda chiqgan alyukabond
-    query = f"select sum(quantity) from alyukabond where date between '{f_date}' and '{t_date}'"
+    query = f"select sum(surface) from alyukabond where date between '{f_date}' and '{t_date}'"
+
     alyukabond_all_quantity = db.session.execute(text(query)).fetchall()
     alyukabond_all_quantity = alyukabond_all_quantity[0][0] if alyukabond_all_quantity[0][0] else 1
 
-    query1 = f"select sum(quantity) from alyukabond where  al_thickness='{thkn}' and color1_id='{color1}' and color2_id='{color2}' and type_product='{type_product}' and date between '{f_date}' and '{t_date}'"
+    query1 = f"select sum(surface) from alyukabond where  al_thickness='{thkn}' and color1_id='{color1}' and color2_id='{color2}' and type_product='{type_product}' and date between '{f_date}' and '{t_date}'"
     alyukabond_quantity = db.session.execute(text(query1)).fetchall()
     alyukabond_quantity = alyukabond_quantity[0][0] if alyukabond_quantity[0][0] else 0
 
@@ -66,39 +78,40 @@ def alyukabond_price():
 
     # kley narx o'rtacha
     glue = Glue.query.with_entities(func.avg(Glue.price_per_kg)).filter(Glue.date.between(d, s)).all()
-    glue =  glue[0][0] if glue[0][0] else 0
+    glue =  glue[0][0] / 1000 if glue[0][0] else 0
 
     # nakleyka natx o'rtahca
     sticker = Sticker.query.with_entities(func.avg(Sticker.price_per_surface)).filter(Sticker.type_sticker==typ, Sticker.date.between(d, s)).all()
     sticker = sticker[0][0] if sticker[0][0] else 0
 
     # rasxodlar
-    exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.status!='salafan', Expence.date.between(d, s)).all()
+    exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.status!='salafan', Expence.seb==True, Expence.date.between(d, s)).all()
     # bitta alyukabondga minadigan rasxod
-    rasxod = (exp[0][0] / alyukabond_all_quantity) if exp[0][0] else 0
+    exp = exp[0][0] if exp[0][0] else 0
+    rasxod = (exp / alyukabond_all_quantity)
 
     if type_product == '2':
-        al1 = 1.4 * alyukabond_quantity * aluminy1
-        al2 = 1.4 * alyukabond_quantity * aluminy2
-        st = 3 * 2 * alyukabond_quantity * sticker
-        gl = 0.27 * alyukabond_quantity * glue
-        grn = 10.3 * grnl["grn_kg_narx"]
+        al1 = 1.4 / 3 * aluminy1
+        al2 = 1.4 / 3 * aluminy2
+        st = 3.0256 * 2 / 3 * sticker
+        gl = (0.27 / 3) * (glue / 1000)
+        grn = 10.3 / 3 * grnl["grn_kg_narx"]
         seb = (al1 + al2 + st + gl + grn + rasxod)/(3 * alyukabond_quantity) if alyukabond_quantity else 0
     else:
-        al1 = 1.4 * alyukabond_quantity * aluminy1
-        al2 = 1.4 * alyukabond_quantity * aluminy2
-        st = 3 * alyukabond_quantity * sticker
-        gl = 0.27 * alyukabond_quantity * glue
-        grn = 10.3 * grnl["grn_kg_narx"]
+        al1 = 1.4 / 3 * aluminy1
+        al2 = 1.4 / 3 * aluminy2
+        st = 3.0256 / 3 * sticker
+        gl = (0.27 / 3) * (glue / 1000)
+        grn = 10.3 / 3 * grnl["grn_kg_narx"]
         seb = (al1 + al2 + st + gl + grn + rasxod)/(3 * alyukabond_quantity) if alyukabond_quantity else 0
     data = [{
         "aluminy_color1":round(al1, 2),
         "aluminy_color2":round(al2, 2),
         "glue":round(gl, 2),
         "sticker":round(st, 2),
-        "granula":round(grn, 2),
+        "granula":round(grnl["grn_kg_narx"], 2),
         "rasxod_salafan":round(grnl["grn_rasxod"], 2),
-        "rasxod_alyukabond":round(rasxod, 2),
+        "rasxod_alyukabond":round(exp, 2),
         "quantity_alyukabond":round(alyukabond_quantity, 2),
         "sebistoymost":round(seb, 2)
     }]
@@ -284,12 +297,16 @@ def transaction():
         if request.method == 'GET':
             id = request.args.get("transaction_id", None)
             status = request.args.get("status")
+            user = request.args.get("user")
             from_d = request.args.get('from')
             to_d = request.args.get('to')
             if from_d and to_d:
                 from_d, to_d = from_d.split('-'), to_d.split('-')
                 d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
                 s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+                if user:
+                    trs = WriteTransaction.query.filter(WriteTransaction.status==status, WriteTransaction.user==user, WriteTransaction.date.between(d, s)).all()
+                    return jsonify(transaction_schemas.dump(trs))
                 trs = WriteTransaction.query.filter(WriteTransaction.status==status, WriteTransaction.date.between(d, s)).all()
                 return jsonify(transaction_schemas.dump(trs))
             if id is not None:
@@ -348,20 +365,38 @@ def report_excel(id):
         destination_sheet = destination_wb[sheet_name]
         count = 15
         saled = SaledProduct.query.get(id)
-        destination_sheet["M1"] = saled.id + 1000
-        destination_sheet["D3"] = saled.date
-        destination_sheet["E5"] = saled.agreement_num
-        destination_sheet["E9"] = saled.customer
-        destination_sheet["E12"] = saled.driver
-        destination_sheet["M12"] = saled.vehicle_number
+        # destination_sheet["M1"] = saled.id + 1000
+        destination_sheet["C3"] = saled.date
+        destination_sheet["T3"] = saled.date
+
+        destination_sheet["D5"] = saled.agreement_num
+        destination_sheet["U5"] = saled.agreement_num
+
+        destination_sheet["D9"] = saled.customer
+        destination_sheet["U9"] = saled.customer
+
+        destination_sheet["D12"] = saled.driver
+        destination_sheet["U12"] = saled.driver
+
+        destination_sheet["L12"] = saled.vehicle_number
+        destination_sheet["AC12"] = saled.vehicle_number
         for product in saled.products:
             count +=1
             data_to_write = {
-                f'C{count}': product.alyukabond.name if product.alyukabond.name else "Алюкобонд",
-                f'L{count}': f"{product.alyukabond.color1.name}, {product.alyukabond.color2.name if product.alyukabond.color2.id != 1 else ''}",
-                f'M{count}': f"{product.alyukabond.list_length}, {product.alyukabond.list_width}",
-                f'N{count}': "лист",
-                f'P{count}': product.alyukabond.quantity
+                f'B{count}': product.alyukabond.name if product.alyukabond.name else "Алюкобонд",
+                f'S{count}': product.alyukabond.name if product.alyukabond.name else "Алюкобонд",
+                
+                f'K{count}': f"{product.alyukabond.color1.name}, {product.alyukabond.color2.name if product.alyukabond.color2.id != 1 else ''}",
+                f'AB{count}': f"{product.alyukabond.color1.name}, {product.alyukabond.color2.name if product.alyukabond.color2.id != 1 else ''}",
+                
+                f'L{count}': f"{product.alyukabond.list_length} * {product.alyukabond.list_width}",
+                f'AC{count}': f"{product.alyukabond.list_length} * {product.alyukabond.list_width}",
+                
+                f'M{count}': "лист",
+                f'AD{count}': "лист",
+                
+                f'O{count}': product.alyukabond.quantity,
+                f'AF{count}': product.alyukabond.quantity
             }
             for cell_address, value in data_to_write.items():
                 destination_sheet[cell_address] = value

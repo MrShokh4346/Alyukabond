@@ -206,6 +206,7 @@ def expence():
             description = request.get_json().get('description'),
             user = request.get_json().get('user'),
             status = request.get_json().get('status'),
+            seb = request.get_json().get('seb'),
             price = request.get_json().get('price'),
             price_s = request.get_json().get('price_s')
         )
@@ -247,19 +248,24 @@ def warehouse():
 
 
 # granula sklad
-@bp.route('/make-granula', methods=['GET', "POST"])
+@bp.route('/make-granula', methods=['GET', "POST", "PUT", "PATCH", 'DELETE'])
+@jwt_required()
 def make_granula():
+    user = db.get_or_404(Users, get_jwt_identity())
     if request.method == 'POST':
         data = request.get_json()
         material = MaterialAmount.query.filter_by(index1=True).first()
         if material.amount > data.get("material_weight"):
             material.amount -= data.get("material_weight")
-            granula = GranulaPoteriya(
-                material_weight = data.get("material_weight"),
-                granula_weight = data.get("granula_weight"),
-                provider = data.get('provider'),
-                poteriya = data.get("material_weight") - data.get("granula_weight")
-            )
+            if data.get("material_weight") - data.get("granula_weight") > 0:
+                granula = GranulaPoteriya(
+                    material_weight = data.get("material_weight"),
+                    granula_weight = data.get("granula_weight"),
+                    provider = data.get('provider'),
+                    poteriya = data.get("material_weight") - data.get("granula_weight")
+                )
+            else:
+                return jsonify(msg="Гранула не может быть больше материала"), 400
             db.session.add(granula)
             amount = GranulaAmount.query.filter_by(sklad=False).first()
             if not amount:
@@ -270,7 +276,36 @@ def make_granula():
             return jsonify(msg="Success")
         else:
             return jsonify(msg="На складе недостаточно материал")
-    else:
+    elif request.method == 'PUT' or request.method == 'PATCH':
+        if user.role == 'a':
+            data = request.get_json()
+            granula = db.get_or_404(GranulaPoteriya, data.get("id"))
+            gr_amount = GranulaAmount.query.filter_by(sklad=False).first()
+            material = MaterialAmount.query.filter_by(index1=True).first()
+            granula.provider = data.get('provider')
+            if data.get("material_weight") and data.get("granula_weight") and material.amount > data.get("material_weight"):
+                if data.get("material_weight") - data.get("granula_weight") > 0:
+                    extra =  data.get("material_weight") - granula.material_weight 
+                    extra_weight = data.get("granula_weight") - granula.granula_weight 
+                    material.amount += extra
+                    gr_amount.weight += extra_weight
+                    granula.material_weight = data.get("material_weight")
+                    granula.granula_weight = data.get("granula_weight")
+                    granula.poteriya = data.get("material_weight") - data.get("granula_weight")
+                    db.session.commit()
+                    return jsonify(msg="Success")
+                return jsonify(msg="Гранула не может быть больше материала"), 400
+            return jsonify(msg="На складе недостаточно материал"), 400
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
+    elif request.method == 'DELETE':
+        if user.role == 'a':
+            id = request.args.get('id')
+            material = db.get_or_404(GranulaPoteriya, id)
+            db.session.delete(material)
+            db.session.commit()
+            return jsonify(msg="Deleted")
+        return jsonify(msg="У вас нет полномочий на это действие"), 401
+    elif request.method == 'GET':
         id = request.args.get('id')
         from_d = request.args.get("from")
         to_d = request.args.get("to")
@@ -280,8 +315,4 @@ def make_granula():
             return jsonify(gr_sklad_schema.dump(prds))
         if id is not None:
             return jsonify(gr_sklad_schem.dump(GranulaPoteriya.query.get(id)))
-        # data = {
-        #     'poteriya':gr_sklad_schema.dump(GranulaPoteriya.query.all()),
-        #     'amount':gr_amount_schema.dump(GranulaAmount.query.filter_by(sklad=False).first())
-        # }
         return jsonify(gr_sklad_schema.dump(GranulaPoteriya.query.all()))

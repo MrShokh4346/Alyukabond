@@ -65,7 +65,8 @@ def make_aluykabond():
                     al_thickness = data.get('al_thickness'),
                     product_thickness = data.get('product_thickness'),
                     quantity = data.get('quantity'),
-                    provider = data.get('provider')
+                    provider = data.get('provider'),
+                    surface = data.get('list_length') * data.get('list_width') * data.get('quantity')
                 )                    
                 db.session.add(alyukabond)
                 db.session.commit()
@@ -81,21 +82,22 @@ def make_aluykabond():
             material_id = request.args.get('material_id')
             try:
                 material = db.get_or_404(Alyukabond, material_id)
-                update_alyukabond_amount(material=material, type=data.get('type_sticker', material.type_sticker), sort=data.get('sort', material.sort), color1=data.get('color1', material.color1),
-                    color2=data.get('color2', material.color2), length=data.get('list_length', material.list_length), width=data.get('list_width', material.list_width), al_thickness=data.get('al_thickness', material.al_thickness),
+                update_alyukabond_amount(material=material, type=data.get('type_sticker', material.type_sticker), sort=data.get('sort', material.sort), color1=data.get('color1_id', material.color1),
+                    color2=data.get('color2_id', material.color2), length=data.get('list_length', material.list_length), width=data.get('list_width', material.list_width), al_thickness=data.get('al_thickness', material.al_thickness),
                     product_thickness=data.get('product_thickness', material.product_thickness), quantity=data.get('quantity', material.quantity))
                 material.name = data.get('name', material.name)
                 material.size = data.get('size', material.size)
                 material.type_product = data.get('type_product', material.type_product)
                 material.sort = data.get('sort', material.sort)
-                material.color1 = data.get('color1', material.color1)
-                material.color2 = data.get('color2', material.color2)
+                material.color1 = data.get('color1_id', material.color1)
+                material.color2 = data.get('color2_id', material.color2)
                 material.list_length = data.get('list_length', material.list_length)
                 material.list_width = data.get('list_width', material.list_width)
                 material.al_thickness = data.get('al_thickness', material.al_thickness)
                 material.product_thickness = data.get('product_thickness', material.product_thickness)
                 material.quantity = data.get('quantity', material.quantity)
                 material.provider = data.get('provider', material.provider)
+                material.surface = material.list_length * material.list_width * material.quantity
                 db.session.commit()
                 return jsonify(msg='Success')
             except AssertionError as err:
