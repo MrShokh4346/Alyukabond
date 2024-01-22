@@ -3,12 +3,30 @@ from sqlalchemy import text
 from main.serializers import *
 
 
+def add_material_amount(material_weight):
+    material_amount = MaterialAmount.query.filter_by(index1=True).first()
+    if not material_amount:
+        material_amount = MaterialAmount(amount=0, index1=True)
+        db.session.add(material_amount)
+        db.session.commit()
+    material_amount.amount += material_weight
+    db.session.commit()
+
+
+def add_granula_amount(granula_weight):
+    amount = GranulaAmount.query.filter_by(sklad=False).first()
+    if not amount:
+        amount = GranulaAmount(weight=0)
+        db.session.add(amount)
+    amount.weight += granula_weight
+    db.session.commit()
+
+
 def add_aluminy_amount(thickness=None, width=None, color_id=None, length=0, roll_weight=0, quantity=1):
     amount = AluminyAmount.query.filter_by(thickness=thickness, color_id=color_id).first()
     if not amount:
         amount = AluminyAmount(color_id=color_id, thickness=thickness, width=width, surface=0, weight=0)
         db.session.add(amount)
-        # db.session.commit()
     surface = length * quantity * width
     amount.surface += surface
     amount.weight += roll_weight * quantity
@@ -46,7 +64,6 @@ def add_glue_amount(thickness=None, width=1.22, length=0, roll_weight=0, quantit
     if not amount:
         amount = GlueAmount(surface = 0, thickness=thickness, weight = 0)
         db.session.add(amount)
-        # db.session.commit()
     surface = length * quantity * width
     amount.surface += surface
     amount.weight += roll_weight * 1000
@@ -58,11 +75,6 @@ def update_glue_amount(material:Glue=None, thickness=None, length=None, width=1.
     extra_weight = (roll_weight - material.weight) * 1000
     extra_quantity = quantity - material.quantity 
     amount = GlueAmount.query.filter_by(index1=True).first()
-    # amount1 = GlueAmount.query.filter_by(thickness=thickness).first()
-    # if amount1 is None:
-    #     amount1 = GlueAmount(thickness=thickness, surface=0, weight=0)
-    #     db.session.add(amount1)
-    #     db.session.commit()
     if amount is not None:
         surface = material.length * extra_quantity * width
         weight = material.weight 
@@ -70,13 +82,7 @@ def update_glue_amount(material:Glue=None, thickness=None, length=None, width=1.
         weight += extra_weight
         amount.surface += surface 
         amount.weight += weight 
-    # else:
-    #     amount.surface -= material.length * material.quantity * width
-    #     amount.weight -= material.weight * material.quantity
-    #     surface = length * width * quantity
-    #     amount1.surface += surface
-    #     amount1.weight += roll_weight * quantity
-    #     db.session.commit()
+
 
 
 def add_sticker_amount(width=1.22,  type=None, length=0, quantity=1):
@@ -84,7 +90,6 @@ def add_sticker_amount(width=1.22,  type=None, length=0, quantity=1):
     if not amount:
         amount = StickerAmount(width=width, type_sticker=type, surface=0)
         db.session.add(amount)
-        # db.session.commit()
     surface = width * length * quantity
     amount.surface += surface
     db.session.commit()
@@ -124,94 +129,10 @@ def add_alyukabond_amount(type=None, type_product=None, sort=None, color1=None, 
     db.session.commit()
 
 
-def update_alyukabond_aluminy(amount1, amount2):
-    aluminy1 = AluminyAmount.query.filter_by(thickness=amount1.al_thickness, color_id=amount1.color1).first()
-    aluminy2 = AluminyAmount.query.filter_by(thickness=amount1.al_thickness, color_id=amount1.color2).first()
-    aluminy3 = AluminyAmount.query.filter_by(thickness=amount2.al_thickness, color_id=amount2.color1).first()
-    aluminy4 = AluminyAmount.query.filter_by(thickness=amount2.al_thickness, color_id=amount2.color2).first()
-    old_surface = amount1.list_length * amount1.list_width * amount1.quantity
-    old_weight = 1.4 * amount1.quantity
-    aluminy1.surface += old_surface
-    aluminy1.weight += old_weight
-    aluminy2.surface += old_surface
-    aluminy2.weight += old_weight
-    new_surface = amount2.list_length * amount2.list_width * amount2.quantity
-    new_weight = 1.4 * amount2.quantity
-    if (aluminy3 is not None and aluminy4 is not None) and (aluminy3.surface > new_surface and aluminy4.surface > new_surface):
-        aluminy3.surface -= new_surface
-        aluminy3.weight -= new_weight
-        aluminy4.surface -= new_surface
-        aluminy4.weight -= new_weight
-        db.session.commit()
-    else:
-        raise AssertionError(f"На складе недостаточно алюмина данного типа")
-
-
-def update_alyukabond_sticker(amount1, amount2):
-    sticker1 = StickerAmount.query.filter_by(type_sticker=amount1.type_product).first()
-    sticker2 = StickerAmount.query.filter_by(type_sticker=amount2.type_product).first()
-    old_surface = amount1.list_length * amount1.list_width * amount1.quantity
-    sticker1.surface += old_surface
-    new_surface = amount2.list_length * amount2.list_width * amount2.quantity
-    if sticker2 is not None and sticker2.surface > new_surface:
-        sticker2.surface -= new_surface
-        db.session.commit()
-    else:
-        AssertionError(f"На складе недостаточно наклейка данного типа")
-
-
-def update_alyukabond_glue(amount1, amount2):
-    surface1 = amount1.list_length * amount1.list_width * amount1.quantity
-    surface2 = amount2.list_length * amount2.list_width * amount2.quantity
-    weight = 0.27 * (amount1.quantity - amount2.quantity)
-    extra = surface1 - surface2
-    glue = GlueAmount.query.filter_by(index1=True).first()
-    glue.surface += extra
-    glue.weight += weight
-    db.session.commit()
-
-
-def update_alyukabond_amount(material:Alyukabond=None, type=None, sort=None, color1=None, color2=None, length=None, width=1.22, al_thickness=None, product_thickness=None, quantity=1):
-    amount = AlyukabondAmount.query.filter_by(type_product=material.type_product, color1_id=material.color1_id, color2_id=material.color2_id,
-            list_length=material.list_length, al_thickness=material.al_thickness, product_thickness=material.product_thickness).first()
-    amount1 = AlyukabondAmount.query.filter_by(type_product = type, color1_id = color1, color2_id = color2,
-            list_length = length, al_thickness = al_thickness, product_thickness = product_thickness).first()
-    extra = quantity - material.quantity
-    if (amount is not None and amount1 is not None) and amount == amount1:
-        amount.quantity += extra
-        db.session.commit()
-    else:
-        if amount1 is not None:
-            amount.quantity -= material.quantity
-            amount1.quantity += quantity
-            update_alyukabond_aluminy(amount1=amount, amount2=amount1)
-            update_alyukabond_sticker(amount1=amount, amount2=amount1)
-            update_alyukabond_glue(amount1=amount, amount2=amount1)
-            db.session.commit()
-        else:
-            amount1 = AlyukabondAmount(
-                type_product = type,
-                sort = sort,
-                color1_id = color1,
-                color2_id = color2,
-                list_length = length,
-                list_width = width,
-                al_thickness = al_thickness,
-                product_thickness = product_thickness,
-                quantity = quantity
-            )
-            db.session.add(amount1)
-            amount.quantity -= material.quantity
-            update_alyukabond_aluminy(amount1=amount, amount2=amount1)
-            update_alyukabond_sticker(amount1=amount, amount2=amount1)
-            update_alyukabond_glue(amount1=amount, amount2=amount1)
-            db.session.commit()
-
-
 def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, length=None, width=None, miqdor=1):
     ogirlik = {
         'алюмина':1.4 * length/2.44,
-        'клея':0.27 * length/2.44,
+        'клея':270,
         'гранула':10.3 * length/2.44,
         "наклейка":0
     }
@@ -256,19 +177,22 @@ def check(turi=None, rangi1=None, rangi2=None, qalinligi=None, length=None, widt
 
 
 def filter_amount(name=None, type=None, sort=None, thickness=None, color1=None, color2=None, from_d=None, to_d=None, length=None):
-    t = "type_product" if name.count('alyukabond')==1 else f"type_{name.split('_')[0]}"
+    t = "type_product" if name.count('alyukabond')==1 else f"type_sticker"
     c = "color1_id" if name.count('alyukabond')==1 else "color_id"
     thkn = "al_thickness" if name.count('alyukabond')==1 else "thickness"
     query = f"SELECT * FROM {name} WHERE"   # aluminy_amount, glue_amount, sticker_amount, alyukabond_amount
     query += f" {t}='{type}' AND" if type is not None else ''
+    # query += f" editable='f' AND" if len(name.split('_'))==1 else ''
     query += f" sort='{sort}' AND" if sort is not None else ''
     query += f" {c}='{color1}' AND" if color1 is not None else ''
     query += f" color2_id='{color2}' AND" if color2 is not None else ''
     query += f" list_length='{length}' AND" if length is not None else ''
     query += f" {thkn}='{thickness}' AND" if thickness is not None else ''
+    query += f" quantity>0 AND" if name=='alyukabond_amount' else ''
     if (from_d and to_d) and len(name.split('_')) == 1:
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
     query = query[:-4]
+    query += " ORDER BY date DESC" if len(name.split("_"))==1 else '' 
     prds = db.session.execute(text(query)).fetchall()
     if name in ['alyukabond', 'aluminy', "aluminy_amount", "alyukabond_amount"]:
         data = []
@@ -280,7 +204,6 @@ def filter_amount(name=None, type=None, sort=None, thickness=None, color1=None, 
                 data[count]["color"] = color_schema.dump(c)
             elif name == "aluminy_amount":
                 data.append(al_amount_schem.dump(prd))
-                print(data)
                 c = Color.query.filter_by(id=prd.color_id).first()
                 data[count]["color"] = color_schema.dump(c)
             elif name == "alyukabond":
@@ -316,6 +239,7 @@ def filter_nakladnoy(name=None, partiya=None, provider=None, from_d=None, to_d=N
     if (from_d and to_d):
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
     query = query[:-4]
+    query += " ORDER BY date DESC" 
     prds = db.session.execute(text(query)).fetchall()
     data = []
     count = 0
@@ -332,9 +256,11 @@ def filter_saled(agr_num=None, customer=None, saler=None, from_d=None, to_d=None
     query += f" customer like '%{customer}%' AND" if customer is not None else ''
     query += f" saler like '%{saler}%' AND" if saler is not None else ''
     query += f" agreement_num='{agr_num}' AND"if agr_num is not None else ''
+    # query += f" editable='0' AND"#if agr_num is not None else ''
     if (from_d and to_d):
         query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
     query = query[:-4]
+    query += " ORDER BY date DESC" 
     prds = db.session.execute(text(query)).fetchall()
     data = []
     count = 0

@@ -10,3 +10,13 @@ def balance_minus(amount):
         raise AssertionError("На балансе недостаточно денег")
     balance_d.amount -= amount
     db.session.commit()
+
+
+def balance_add(amount):
+    balance_d = Balance.query.filter_by(valuta='d').first()
+    if not balance_d:
+        balance_d = Balance(amount=0, valuta='d')
+        db.session.add(balance_d)
+        db.session.commit()
+    balance_d.amount += amount
+    db.session.commit()

@@ -16,7 +16,7 @@ def salafan_rasxod(frm, to):
     d = to - timedelta(days=30)
     material = GranulaMaterial.query.with_entities(func.avg(GranulaMaterial.price_per_kg)).filter(GranulaMaterial.date.between(d, to)).all()
     granula = GranulaPoteriya.query.with_entities(func.sum(GranulaPoteriya.granula_weight), func.sum(GranulaPoteriya.material_weight)).filter(GranulaPoteriya.date.between(frm, to)).all()
-    exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.status=='salafan', Expence.seb==True, Expence.date.between(frm, to)).all()
+    exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.status=='salafan', Expence.seb=="учитывает", Expence.date.between(frm, to)).all()
     rasxod = exp[0][0] if exp[0][0] else 0
     salafan = granula[0][1] if granula[0][1] else 0 
     granula = granula[0][0] if granula[0][0] else 1 
@@ -38,7 +38,7 @@ def granula_seb():
     d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
     s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
     data = salafan_rasxod(d, s)
-    return jsonify([{"granula_seb":data["grn_kg_narx"]}])
+    return jsonify([{"granula_seb":data['grn_kg_narx']}])
 
 
 # sebestoymost
@@ -62,12 +62,13 @@ def alyukabond_price():
     # bir oyda chiqgan alyukabond
     query = f"select sum(surface) from alyukabond where date between '{f_date}' and '{t_date}'"
 
-    alyukabond_all_quantity = db.session.execute(text(query)).fetchall()
-    alyukabond_all_quantity = alyukabond_all_quantity[0][0] if alyukabond_all_quantity[0][0] else 1
+    alyukabond_all_surface = db.session.execute(text(query)).fetchall()
+    alyukabond_all_surface = alyukabond_all_surface[0][0] if alyukabond_all_surface[0][0] else 1
 
+    # berilga tur buyicha
     query1 = f"select sum(surface) from alyukabond where  al_thickness='{thkn}' and color1_id='{color1}' and color2_id='{color2}' and type_product='{type_product}' and date between '{f_date}' and '{t_date}'"
-    alyukabond_quantity = db.session.execute(text(query1)).fetchall()
-    alyukabond_quantity = alyukabond_quantity[0][0] if alyukabond_quantity[0][0] else 0
+    alyukabond_surface = db.session.execute(text(query1)).fetchall()
+    alyukabond_surface = alyukabond_surface[0][0] if alyukabond_surface[0][0] else 0
 
     # aluminy narx o'rtacha
     aluminy1 = Aluminy.query.with_entities(func.avg(Aluminy.price_per_kg)).filter(Aluminy.thickness==thkn, Aluminy.color_id==color1, Aluminy.date.between(d, s)).all()
@@ -85,34 +86,34 @@ def alyukabond_price():
     sticker = sticker[0][0] if sticker[0][0] else 0
 
     # rasxodlar
-    exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.status!='salafan', Expence.seb==True, Expence.date.between(d, s)).all()
+    exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.status!='salafan', Expence.seb=="учитывает", Expence.date.between(d, s)).all()
     # bitta alyukabondga minadigan rasxod
     exp = exp[0][0] if exp[0][0] else 0
-    rasxod = (exp / alyukabond_all_quantity)
+    rasxod = (exp / alyukabond_all_surface)
 
     if type_product == '2':
         al1 = 1.4 / 3 * aluminy1
         al2 = 1.4 / 3 * aluminy2
         st = 3.0256 * 2 / 3 * sticker
-        gl = (0.27 / 3) * (glue / 1000)
+        gl = (270 / 3) * glue
         grn = 10.3 / 3 * grnl["grn_kg_narx"]
-        seb = (al1 + al2 + st + gl + grn + rasxod)/(3 * alyukabond_quantity) if alyukabond_quantity else 0
+        seb = (al1 + al2 + st + gl + grn + rasxod) if alyukabond_surface else 0
     else:
         al1 = 1.4 / 3 * aluminy1
         al2 = 1.4 / 3 * aluminy2
         st = 3.0256 / 3 * sticker
-        gl = (0.27 / 3) * (glue / 1000)
+        gl = (270 / 3) * glue
         grn = 10.3 / 3 * grnl["grn_kg_narx"]
-        seb = (al1 + al2 + st + gl + grn + rasxod)/(3 * alyukabond_quantity) if alyukabond_quantity else 0
+        seb = (al1 + al2 + st + gl + grn + rasxod) if alyukabond_surface else 0
     data = [{
         "aluminy_color1":round(al1, 2),
         "aluminy_color2":round(al2, 2),
         "glue":round(gl, 2),
         "sticker":round(st, 2),
-        "granula":round(grnl["grn_kg_narx"], 2),
+        "granula":round(grn, 2),
         "rasxod_salafan":round(grnl["grn_rasxod"], 2),
         "rasxod_alyukabond":round(exp, 2),
-        "quantity_alyukabond":round(alyukabond_quantity, 2),
+        "quantity_alyukabond":round(alyukabond_surface, 2),
         "sebistoymost":round(seb, 2)
     }]
     return jsonify(data)
@@ -127,13 +128,16 @@ def report_debt():
         if request.method == 'GET':
             from_d = request.args.get('from')
             to_d = request.args.get('to')
-            partiya = request.args.get('partiya')
+            if from_d=='' :
+                from_d = date.today() - timedelta(days=30)
+                to_d = date.today() + timedelta(days=1)
+            partiya = request.args.get('partiya')                                                                                              
             provider = request.args.get('provider')
             fr = request.args.get('filter', None)
             aluminy = filter_nakladnoy(name="aluminy_nakladnoy", partiya=partiya, provider=provider, from_d=from_d, to_d=to_d) if fr=='aluminy' else None
-            glue = glue_schemas.dump(Glue.query.filter(Glue.date > from_d, Glue.date < to_d).all()) if fr=='glue' else None
+            glue = glue_schemas.dump(Glue.query.filter(Glue.date > from_d, Glue.date <= to_d).order_by(Glue.date.desc()).all()) if fr=='glue' else None
             sticker = filter_nakladnoy(name="sticker_nakladnoy", partiya=partiya, provider=provider, from_d=from_d, to_d=to_d) if fr=='sticker' else None
-            salafan = salafan_schema.dump(GranulaMaterial.query.filter(GranulaMaterial.date > from_d, GranulaMaterial.date < to_d).all()) if fr=='salafan' else None
+            salafan = salafan_schema.dump(GranulaMaterial.query.filter(GranulaMaterial.date > from_d, GranulaMaterial.date <= to_d).order_by(GranulaMaterial.date.desc()).all()) if fr=='salafan' else None
             data = {
                 "aluminy":aluminy,
                 "sticker":sticker,
@@ -176,7 +180,7 @@ def report_debt():
                 except AssertionError as err:
                     return jsonify(msg=f"{str(err)}"), 400
                 return jsonify(msg="Success")
-            return jsonify(msg="You are entered more then debt")
+            return jsonify(msg="Вы вошли в нечто большее, чем просто долг"),400
     else:
         return jsonify(msg="У вас нет полномочий на это действие"), 401
 
@@ -188,17 +192,18 @@ def report_fee():
     user = db.get_or_404(Users, get_jwt_identity())
     if user.role == 'a':
         if request.method == 'GET':
-            from_d = request.args.get('from').split('-')
-            to_d = request.args.get('to').split('-')
-            d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
-            s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
-            alyukabond = SaledProduct.query.filter(SaledProduct.debt_s>0, SaledProduct.date.between(d, s)).all()
+            from_d = request.args.get('from')
+            to_d = request.args.get('to')
+            if from_d=='' :
+                from_d = date.today() - timedelta(days=30)
+                to_d = date.today() + timedelta(days=1)
+            alyukabond = SaledProduct.query.filter( SaledProduct.date > from_d, SaledProduct.date <= to_d).order_by(SaledProduct.date.desc()).all()
             return jsonify(saled_product_schema.dump(alyukabond))
         elif request.method == 'POST':
             id = request.args.get('id')
             data = request.get_json()
             obj = SaledProduct.query.get(id)
-            if obj.debt_s >= data.get('amount_s'):
+            if obj.debt_d >= data.get('amount_d'):
                 obj.total_price_s = obj.total_price_s
                 obj.total_price_d = obj.total_price_d
                 obj.payed_price_d += data.get('amount_d')
@@ -210,7 +215,7 @@ def report_fee():
                 db.session.commit()
                 balance_add(data.get('amount_d'))
                 return jsonify(msg="Success")
-            return jsonify(msg="You are entered more then debt")
+            return jsonify(msg="Вы вошли в нечто большее, чем просто долг"), 400
     else:
         return jsonify(msg="У вас нет полномочий на это действие"), 401
 
@@ -233,6 +238,7 @@ def payed_debt():
                 'saled': f"SELECT * FROM payed_debt WHERE salafan_id is NULL AND glue_id is NULL AND  aluminy_nakladnoy_id is NULL AND  sticker_nakladnoy_id is NULL " 
             }.get(name)
             query += f"AND date BETWEEN '{from_d}' AND '{to_d}'"
+            query += " ORDER BY date DESC"
             prds = db.session.execute(text(query)).fetchall()
             return jsonify(payed_debt_schema.dump(prds))
     if id and name:
@@ -243,6 +249,7 @@ def payed_debt():
             'salafan': f"SELECT * FROM payed_debt WHERE salafan_id='{id}'",
             'saled': f"SELECT * FROM payed_debt WHERE saled_id='{id}'"
         }.get(name)
+        query += " ORDER BY date DESC"
         prds = db.session.execute(text(query)).fetchall()
         return jsonify(payed_debt_schema.dump(prds))
     query = f"SELECT * FROM payed_debt WHERE"  
@@ -250,6 +257,7 @@ def payed_debt():
     query += f" agreement_number like '%{agr_num}%' AND" if agr_num is not None else ''
     query += f" date BETWEEN '{from_d}' AND '{to_d}' AND" if from_d and to_d else ''
     query = query[:-4]
+    query += " ORDER BY date DESC"
     prds = db.session.execute(text(query)).fetchall()
     return jsonify(payed_debt_schema.dump(prds))
 
@@ -260,23 +268,26 @@ def payed_debt():
 def balance():
     user = db.get_or_404(Users, get_jwt_identity())
     if user.role == 'a':
-        from_d = request.args.get('from', f"{date.today():%Y-%m-%d}").split('-')
-        to_d = request.args.get('to', f"{date.today():%Y-%m-%d}").split('-')
+        from_d = request.args.get('from')
+        to_d = request.args.get('to')
         name = request.args.get('name')
-        d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
-        s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
+        if from_d=='' or from_d is None:
+            d = date.today() - timedelta(days=30)
+            s = date.today() + timedelta(days=1)
+        else:
+            d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
+            s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
         if name == "balance":
-            w_t = WriteTransaction.query.all()
             balance_d = Balance.query.filter_by(valuta='d').first()
             data = [{
-                'balance_d':balance_d.amount
+                'balance_d':f"{balance_d.amount:.2f}"
             }]
             return jsonify(data)
         elif name == 'profit':
-            saled = SaledProduct.query.with_entities(func.sum(SaledProduct.payed_price_d)).filter(SaledProduct.date.between(d, s)).all()
-            aluminy = AluminyNakladnoy.query.with_entities(func.sum(AluminyNakladnoy.total_price_d)).filter(AluminyNakladnoy.date.between(d, s)).all()
-            glue = Glue.query.with_entities(func.sum(Glue.total_price_d)).filter(Glue.date.between(d, s)).all()
-            sticker = StickerNakladnoy.query.with_entities(func.sum(StickerNakladnoy.total_price_d)).filter(StickerNakladnoy.date.between(d, s)).all()
+            saled = SaledProduct.query.with_entities(func.sum(SaledProduct.payed_price_d)).filter(SaledProduct.editable==False, SaledProduct.date.between(d, s)).all()
+            aluminy = AluminyNakladnoy.query.with_entities(func.sum(AluminyNakladnoy.total_price_d)).filter(AluminyNakladnoy.editable==False, AluminyNakladnoy.date.between(d, s)).all()
+            glue = Glue.query.with_entities(func.sum(Glue.total_price_d)).filter(Glue.editable==False, Glue.date.between(d, s)).all()
+            sticker = StickerNakladnoy.query.with_entities(func.sum(StickerNakladnoy.total_price_d)).filter(StickerNakladnoy.editable==False, StickerNakladnoy.date.between(d, s)).all()
             exp = Expence.query.with_entities(func.sum(Expence.price)).filter(Expence.date.between(d, s)).all()
             saled_sum = saled[0][0] if saled[0][0] else 0
             aluminy_sum = aluminy[0][0] if aluminy[0][0] else 0
@@ -284,7 +295,7 @@ def balance():
             sticker_sum = sticker[0][0] if sticker[0][0] else 0 
             expence = exp[0][0] if exp[0][0] else 0
             data = saled_sum - (aluminy_sum + glue_sum + sticker_sum + expence)
-            return jsonify([{"profit":data}])
+            return jsonify([{"profit":f"{data:.2f}"}])
     else:
         return jsonify(msg="У вас нет полномочий на это действие"), 401
 
@@ -298,22 +309,22 @@ def transaction():
             id = request.args.get("transaction_id", None)
             status = request.args.get("status")
             user = request.args.get("user")
+            if user=='undefined':
+                user = None
             from_d = request.args.get('from')
             to_d = request.args.get('to')
-            if from_d and to_d:
-                from_d, to_d = from_d.split('-'), to_d.split('-')
-                d = datetime(int(from_d[0]), int(from_d[1]), int(from_d[2]))
-                s = datetime(int(to_d[0]), int(to_d[1]), int(to_d[2]))
-                if user:
-                    trs = WriteTransaction.query.filter(WriteTransaction.status==status, WriteTransaction.user==user, WriteTransaction.date.between(d, s)).all()
-                    return jsonify(transaction_schemas.dump(trs))
-                trs = WriteTransaction.query.filter(WriteTransaction.status==status, WriteTransaction.date.between(d, s)).all()
-                return jsonify(transaction_schemas.dump(trs))
+            query = f"SELECT * FROM write_transaction WHERE "   
+            query += f" write_transaction.user like '%{user}%' AND" if user is not None else ''
+            query += f" status='{status}' AND" if status is not None else ''
+            if (from_d and to_d):
+                query += f" date BETWEEN '{from_d}' AND '{to_d}' AND"
+            query = query[:-4]
+            query += " ORDER BY date DESC"
+            prds = db.session.execute(text(query)).fetchall()
             if id is not None:
                 tr = db.get_or_404(WriteTransaction, id)
                 return jsonify(transaction_schema.dump(tr))
-            trs = WriteTransaction.query.filter_by(status=status).all()
-            return jsonify(transaction_schemas.dump(trs))
+            return jsonify(transaction_schemas.dump(prds))
         elif request.method == 'POST':
             data = request.get_json()
             if data['status'] == 'add':
@@ -395,8 +406,8 @@ def report_excel(id):
                 f'M{count}': "лист",
                 f'AD{count}': "лист",
                 
-                f'O{count}': product.alyukabond.quantity,
-                f'AF{count}': product.alyukabond.quantity
+                f'O{count}': product.quantity,
+                f'AF{count}': product.quantity
             }
             for cell_address, value in data_to_write.items():
                 destination_sheet[cell_address] = value

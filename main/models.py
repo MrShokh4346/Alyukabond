@@ -67,7 +67,7 @@ class GranulaMaterial(db.Model):
     debt_s = db.Column(db.Float)
     provider = db.Column(db.String)
     date = db.Column(db.DateTime, default=datetime.now())
-    status = db.Column(db.String)
+    editable = db.Column(db.Boolean, default=True, nullable=False)
     payed_debt = db.relationship('PayedDebt',  back_populates='salafan', cascade='all, delete-orphan', lazy=True)
 
      
@@ -126,6 +126,7 @@ class GranulaPoteriya(db.Model):
     granula_weight = db.Column(db.Float)
     provider = db.Column(db.String)
     poteriya = db.Column(db.Integer)
+    editable = db.Column(db.Boolean, default=True, nullable=False)
     date = db.Column(db.DateTime, default=datetime.now())
 
     @validates('material_weight')
@@ -145,6 +146,7 @@ class Setka(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     setka_type = db.Column(db.Integer)
     bulk = db.Column(db.Float)
+    editable = db.Column(db.Boolean, default=True, nullable=False)
     date = db.Column(db.DateTime, default=datetime.now())
 
 
@@ -180,6 +182,7 @@ class AluminyNakladnoy(db.Model):
     debt_d = db.Column(db.Float)
     debt_s = db.Column(db.Float)
     provider = db.Column(db.String)
+    editable = db.Column(db.Boolean, default=True)
     aluminy = db.relationship('Aluminy', back_populates='nakladnoy')
     date = db.Column(db.DateTime, default=datetime.now())
     payed_debt = db.relationship('PayedDebt',  back_populates='aluminy_nakladnoy', cascade='all, delete-orphan', lazy=True)
@@ -220,18 +223,27 @@ class Aluminy(db.Model):
     list_length = db.Column(db.Float, default=0)
     roll_weight = db.Column(db.Float, default=0)
     price_per_kg = db.Column(db.Float)
+    provider = db.Column(db.String)
     price = db.Column(db.Float)
     partiya = db.Column(db.Integer)
+    editable = db.Column(db.Boolean, default=True)
     date = db.Column(db.DateTime, default=datetime.now())
     quantity = db.Column(db.Integer, nullable=False)
+
+    def __eq__(self, other):
+        classes_match = isinstance(other, self.__class__)
+        a, b = dict(self.__dict__), dict(other.__dict__)
+        #compare based on equality our attributes, ignoring SQLAlchemy internal stuff
+        a.pop('_sa_instance_state', None)
+        b.pop('_sa_instance_state', None)
+        attrs_match = (a == b)
+        return classes_match and attrs_match
 
     @validates("price_per_kg")
     def validate_price_per_kg(self, key, price):
         if price is None:
             raise AssertionError("Price required")
         return price
-        
-
         
     @validates("thickness")
     def validate_thickness(self, key, thickness):
@@ -253,7 +265,7 @@ class AluminyAmount(db.Model):
 class Glue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     thickness = db.Column(db.Float)
-    weight = db.Column(db.Float, default=0)   # gramm
+    weight = db.Column(db.Float)   # gramm
     width = db.Column(db.Float, default=1.22)
     quantity = db.Column(db.Integer)
     length = db.Column(db.Float, default=0)
@@ -266,6 +278,7 @@ class Glue(db.Model):
     debt_d = db.Column(db.Float)
     debt_s = db.Column(db.Float)
     provider = db.Column(db.String)
+    editable = db.Column(db.Boolean, default=True, nullable=False)
     date = db.Column(db.DateTime, default=datetime.now())
     payed_debt = db.relationship('PayedDebt',  back_populates='glue', cascade='all, delete-orphan', lazy=True)
 
@@ -319,6 +332,7 @@ class StickerNakladnoy(db.Model):
     debt_d = db.Column(db.Float)
     debt_s = db.Column(db.Float)
     provider = db.Column(db.String)
+    editable = db.Column(db.Boolean, default=True)
     sticker = db.relationship('Sticker', back_populates='nakladnoy')
     date = db.Column(db.DateTime, default=datetime.now())
     payed_debt = db.relationship('PayedDebt',  back_populates='sticker_nakladnoy', cascade='all, delete-orphan', lazy=True)
@@ -357,16 +371,27 @@ class Sticker(db.Model):
     surface = db.Column(db.Float)
     price_per_surface = db.Column(db.Float)
     price = db.Column(db.Float)
+    provider = db.Column(db.String)
     partiya = db.Column(db.Integer)
     date = db.Column(db.DateTime)
+    editable = db.Column(db.Boolean, default=True, nullable=False)
     nakladnoy = db.relationship('StickerNakladnoy', back_populates='sticker', lazy=True)
     nakladnoy_id = db.Column(db.Integer, db.ForeignKey("sticker_nakladnoy.id", ondelete="CASCADE"))
 
+    def __eq__(self, other):
+        classes_match = isinstance(other, self.__class__)
+        a, b = dict(self.__dict__), dict(other.__dict__)
+        #compare based on equality our attributes, ignoring SQLAlchemy internal stuff
+        a.pop('_sa_instance_state', None)
+        b.pop('_sa_instance_state', None)
+        attrs_match = (a == b)
+        return classes_match and attrs_match
+    
     @validates("type_sticker")
     def validate_type_sticker(self, key, type_sticker):
         if not type_sticker:
             raise AssertionError("Требуемый тип наклейка")
-        if type_sticker not in [100, 150, 450]:
+        if int(type_sticker) not in [100, 150, 450]:
             raise AssertionError('Тип продукта должен быть одним из этих (100/150/450)')
         return type_sticker
     
@@ -387,8 +412,6 @@ class StickerAmount(db.Model):
 class Alyukabond(db.Model):
     __tablename__ = 'alyukabond'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    size = db.Column(db.String)
     type_product = db.Column(db.Integer)
     type_sticker = db.Column(db.Integer)
     sort = db.Column(db.String)
@@ -403,6 +426,7 @@ class Alyukabond(db.Model):
     product_thickness = db.Column(db.Float)
     quantity = db.Column(db.Integer)
     provider = db.Column(db.String)
+    editable = db.Column(db.Boolean, default=True, nullable=False)
     date = db.Column(db.DateTime, default=datetime.now())
 
     @validates("type_sticker")
@@ -455,7 +479,6 @@ class AlyukabondAmount(db.Model):
     __tablename__ = 'alyukabond_amount'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
-    size = db.Column(db.String)
     type_product = db.Column(db.Integer)
     type_sticker = db.Column(db.Integer)
     sort = db.Column(db.String)
@@ -486,6 +509,7 @@ class SaledProduct(db.Model):
     customer = db.Column(db.String)
     saler = db.Column(db.String)
     vehicle_number = db.Column(db.String)
+    quantity = db.Column(db.Integer)
     agreement_num = db.Column(db.Integer)
     total_price_d = db.Column(db.Float)  
     total_price_s = db.Column(db.Float)  
@@ -494,6 +518,7 @@ class SaledProduct(db.Model):
     debt_d = db.Column(db.Float)
     debt_s = db.Column(db.Float)
     date = db.Column(db.DateTime, default=datetime.now())
+    editable = db.Column(db.Boolean, default=True, nullable=False)
     products = db.relationship('SelectedProduct',  back_populates='saledproduct', cascade='all, delete-orphan', lazy=True)
     payed_debt = db.relationship('PayedDebt',  back_populates='saledproduct', cascade='all, delete-orphan', lazy=True)
 
@@ -523,14 +548,14 @@ class SaledProduct(db.Model):
     @validates("debt_d")
     def validate_debt_s(self, key, debt_s):
         global total, payed
-        if debt_s != total - payed:
+        if debt_s != float(total) - float(payed):
             raise AssertionError("Сумма долга и уплаченная цена не равны общей сумме")
         return debt_s
 
 
-# class Client(db.Model):
+# class AddBalanceUser(db.Model):
 #     id = db.Column(db.Integer, primary_key=True)
-#     user = db.Column(db.String)
+#     name = db.Column(db.String)
 
     
 # class ExpenceIntent(db.Model):
@@ -546,7 +571,7 @@ class SaledProduct(db.Model):
 class Expence(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String)
-    seb = db.Column(db.Boolean)
+    seb = db.Column(db.String)
     user = db.Column(db.String)
     description = db.Column(db.String)
     price = db.Column(db.Float)
